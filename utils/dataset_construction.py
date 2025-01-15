@@ -6,55 +6,74 @@ import os
 import re
 from io import BytesIO
 
+import fitz
 from docx import Document
 from docx.enum.style import WD_STYLE_TYPE
 from docx.shared import Cm
 
 
-def docx_construct_dataset(docx_path, dataset_path):
+def pdf_construct_dataset(pdf_path, dataset_path):
     """
     构建数据集目录，并新建手势数分类的文档。
-    执行完后，数据集格式：单手势/动作名，多手势/动作名，并且在docx_path的同一父目录下新建用手势数分类的文档，其中包含词语名-手势示意图。
-    :param docx_path:"手语采样数据集.docx"存在的路径
-    :param dataset_path:数据集建立的位置。如：C:/.../数据集
-    :return: 无返回值
+    执行完后，数据集格式：单手势/动作名，多手势/动作名，并且在pdf_path的同一父目录下新建用手势数分类的文档，其中包含词语名-手势示意图。
+    :param pdf_path: "手语采样数据集.pdf"存在的路径
+    :param dataset_path: 数据集建立的位置。如：C:/.../数据集
+    :return: null
     """
-    # 处理文字，建立词义索引
-    doc = Document(docx_path)
-    key_list = []
+    flag = '多动作'
+    doc = fitz.open(pdf_path)
+    keys, images = [], []
     simple_key_list, complicate_key_list = [], []
     dictionary = {}
-    for paragraph in doc.paragraphs:
-        # 忽略空段落
-        if paragraph.text.strip():
-            # 对段落中的每一块连续格式化文本做处理
-            for block in paragraph.runs:
-                # 提取每张图片对应的词义，建立在词义作为二级标题，字体大小固定为三号字的基础上
-                if block.font.size == 203200:
-                    key_list.append(block.text)
-                    dictionary[block.text] = None
+    for page_num, page in enumerate(doc.pages(), start=1):
+        blocks = page.get_text("dict")["blocks"]
+        for block in blocks:
+            # 文字块
+            if block["type"] == 0:
+                text = block["lines"][0]["spans"][0]["text"]
+                font_size = block["lines"][0]["spans"][0]["size"]
+                if font_size > 16:  # 建立在词义是二号字、类别是三号字的基础上
+                    continue
+                else:
+                    # 根据flag确定是单动作手语词还是多动作手语词，加入对应的词表中
+                    choice = flag in text
+                    text = re.split(flag, text)[0]
+                    keys.append(text)
+                    dictionary[text] = None
+                    if choice:
+                        complicate_key_list.append(text)
+                    else:
+                        simple_key_list.append(text)
+            # 图片块
+            elif block["type"] == 1:
+                image = block["image"]
+                images.append(BytesIO(image))
+        print(f"第{page_num}页提取完成")
 
-    # 处理图片，加入字典
-    for rel in doc.part.rels.values():
-        print(rel.target_ref)
-        if "image" in rel.target_ref:
-            index = int(re.findall(r'\d+', rel.target_ref)[0])
-            image_data = BytesIO(rel.target_part.blob)
-            dictionary[key_list[index - 1]] = image_data
+    # 建立词-图片对应的字典
+    for index, key in enumerate(keys):
+        dictionary[key] = images[index]
 
+    docx_path = os.path.join(os.path.dirname(pdf_path), "手语采样数据集-按手势分类.docx")
+    construct_dataset(docx_path, dataset_path, dictionary, complicate_key_list, simple_key_list)
+
+
+def construct_dataset(docx_path, dataset_path, dictionary, complicate_key_list, simple_key_list):
     # 创建数据集目录结构
     simple_path = os.path.join(dataset_path, "单动作手势")
     complicate_path = os.path.join(dataset_path, "多动作手势")
     os.makedirs(simple_path, exist_ok=True)
     os.makedirs(complicate_path, exist_ok=True)
-    for word in key_list:
-        if '2' == word[-1]:
-            name = word[:-1]
-            obj_path = os.path.join(complicate_path, name)  # 匹配数字之前的字符串内容
-            complicate_key_list.append(word)
+    # 创建子目录
+    for word in simple_key_list:
+        obj_path = os.path.join(simple_path, word)
+        if os.path.exists(obj_path):
+            print(f"'{word}'重复记录")
         else:
-            obj_path = os.path.join(simple_path, word)
-            simple_key_list.append(word)
+            os.makedirs(obj_path)
+            print(f"'{word}'成功建立")
+    for word in complicate_key_list:
+        obj_path = os.path.join(complicate_path, word)
         if os.path.exists(obj_path):
             print(f"'{word}'重复记录")
         else:
