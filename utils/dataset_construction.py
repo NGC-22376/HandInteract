@@ -5,7 +5,6 @@
 import os
 import re
 from io import BytesIO
-
 import fitz
 from docx import Document
 from docx.enum.style import WD_STYLE_TYPE
@@ -111,48 +110,3 @@ def construct_dataset(docx_path, dataset_path, dictionary, complicate_key_list, 
 
     # 保存文档
     new_doc.save(os.path.join(os.path.dirname(docx_path), "手语采样数据集-按手势数分类.docx"))
-
-# def check_dislocation(docx_path):
-#     """
-#     检查docx内所有文字和图片是否匹配
-#     :param docx_path: docx文件所在路径
-#     :return: null
-#     """
-#     doc = Document(docx_path)
-#     key_list = []
-#     for paragraph in doc.paragraphs:
-#         # 忽略空段落
-#         if paragraph.text.strip():
-#             # 对段落中的每一块连续格式化文本做处理
-#             for block in paragraph.runs:
-#                 # 提取每张图片对应的词义，建立在词义作为二级标题，字体大小固定为三号字的基础上
-#                 if block.font.size == 203200:
-#                     key_list.append(re.match(r"\D+", block.text).group())
-#
-#     index = 0
-#     parts = [doc.part]
-#     parts.extend(doc.part.package.parts)
-#     for part in parts:
-#         for rel in part.rels.values():
-#             if "image" in rel.target_ref:
-#                 image_data = BytesIO(rel.target_part.blob)
-#                 check_match(key_list[index], image_data)
-#                 index += 1
-
-
-# def check_match(text, img):
-#     """
-#     检查文字与图片是否一一对应
-#     :param text: 文字
-#     :param img: 字节流格式图片
-#     :return: null。输出匹配信息
-#     """
-#     ocr = PaddleOCR(use_angle_cls=True, lang='ch')  # 支持角度分类和中文
-#     result = ocr.ocr(np.array(Image.open(img)), cls=True)  # 传递 Image 对象进行 OCR 识别
-#     # 比对识别结果
-#     for line in result[0]:
-#         if text in line:
-#             print(f"{text}匹配成功")
-#             return
-#     print(f"{text}匹配失败")
-#     exit(-1)
