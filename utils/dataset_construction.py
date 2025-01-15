@@ -5,6 +5,7 @@
 import os
 import re
 from io import BytesIO
+
 import fitz
 from docx import Document
 from docx.enum.style import WD_STYLE_TYPE
