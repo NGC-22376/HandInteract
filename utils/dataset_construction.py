@@ -1,15 +1,33 @@
 """
 从“手语采样数据集.docx”得到数据集目录：单手势词语、多手势词语
 新建文档，重排“手语采样数据集.docx”，依照单手势和多手势分类，以便测数据时参照
+数据集格式规整化
 """
 import os
 import re
 from io import BytesIO
-
+import shutil
 import fitz
 from docx import Document
 from docx.enum.style import WD_STYLE_TYPE
 from docx.shared import Cm
+
+
+def format_folders(dataset_path, data_path):
+    """
+    实验数据集格式规整化
+    :param dataset_path: 数据集父目录。如：C:/.../数据集
+    :param data_path: 实验数据父目录。如：C:/.../测试
+    """
+    for dir_name in os.listdir(data_path):
+        for index, file_name in enumerate(os.listdir(os.path.join(data_path, dir_name))):
+            # 匹配间隔时间
+            pattern = r'（(.*?)）'
+            new_name = f"记录{index}（{re.findall(pattern, file_name)[0]}）.xlsx"
+            # 带间隔时间移动到数据集中
+            shutil.move(os.path.join(data_path, dir_name, file_name), os.path.join(dataset_path, dir_name, new_name))
+            print(f"{new_name}移动完毕")
+
 
 
 def pdf_construct_dataset(pdf_path, dataset_path):
