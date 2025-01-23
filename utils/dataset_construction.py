@@ -5,12 +5,42 @@
 """
 import os
 import re
-from io import BytesIO
 import shutil
+from io import BytesIO
+
 import fitz
+import openpyxl
 from docx import Document
 from docx.enum.style import WD_STYLE_TYPE
 from docx.shared import Cm
+
+
+def extract_xlsx_data(source_file, new_file, start_scale, end_scale, start_col, end_col):
+    try:
+        # 加载原始 Excel 文件
+        wb_source = openpyxl.load_workbook(source_file)
+        ws_source = wb_source.active  # 默认读取第一个工作表
+
+        # 创建新的工作簿和工作表
+        wb_new = openpyxl.Workbook()
+        ws_new = wb_new.active
+
+        start_row = wb_source.max_row * start_scale
+        end_row = wb_source.max_row * end_scale
+
+        # 遍历原始文件的指定范围，将数据复制到新文件
+        for row in range(start_row, end_row + 1):  # 遍历行
+            for col in range(start_col, end_col + 1):  # 遍历列
+                cell_value = ws_source.cell(row=row, column=col).value  # 获取原始单元格的值
+                ws_new.cell(row=row - start_row + 1, column=col - start_col + 1, value=cell_value)  # 写入新文件
+
+        # 保存新文件
+        wb_new.save(new_file)
+        print(f"数据已成功提取到新文件: {new_file}")
+    except FileNotFoundError:
+        print(f"错误: 找不到文件 {source_file}")
+    except Exception as e:
+        print(f"发生错误: {e}")
 
 
 def format_folders(dataset_path, data_path):
@@ -20,14 +50,17 @@ def format_folders(dataset_path, data_path):
     :param data_path: 实验数据父目录。如：C:/.../测试
     """
     for dir_name in os.listdir(data_path):
-        for index, file_name in enumerate(os.listdir(os.path.join(data_path, dir_name))):
+        index = 0
+        for file_name in os.listdir(os.path.join(data_path, dir_name)):
             # 匹配间隔时间
             pattern = r'（(.*?)）'
-            new_name = f"记录{index}（{re.findall(pattern, file_name)[0]}）.xlsx"
-            # 带间隔时间移动到数据集中
-            shutil.move(os.path.join(data_path, dir_name, file_name), os.path.join(dataset_path, dir_name, new_name))
-            print(f"{new_name}移动完毕")
-
+            interval = re.findall(pattern, file_name)[0]
+            for i in range(0, int(interval)):
+                new_name = f"记录{index + i}（{interval}）.xlsx"
+                # 带间隔时间移动到数据集中
+                shutil.move(os.path.join(data_path, dir_name, file_name),
+                            os.path.join(dataset_path, dir_name, new_name))
+                print(f"{new_name}移动完毕")
 
 
 def pdf_construct_dataset(pdf_path, dataset_path):
