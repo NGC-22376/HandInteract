@@ -5,62 +5,55 @@
 """
 import os
 import re
-import shutil
 from io import BytesIO
 
 import fitz
-import openpyxl
+import pandas as pd
 from docx import Document
 from docx.enum.style import WD_STYLE_TYPE
 from docx.shared import Cm
 
 
-def extract_xlsx_data(source_file, new_file, start_scale, end_scale, start_col, end_col):
-    try:
-        # 加载原始 Excel 文件
-        wb_source = openpyxl.load_workbook(source_file)
-        ws_source = wb_source.active  # 默认读取第一个工作表
+def extract_csv_data(original_df, new_file, start_row, end_row):
+    if not os.path.exists(os.path.dirname(new_file)):
+        os.makedirs(os.path.dirname(new_file))
+    # 截取数据并保存为新的 CSV 文件
+    new_df = original_df.iloc[start_row:end_row]
+    new_df.to_csv(new_file, index=False, encoding='utf-8')  # 不保存索引
 
-        # 创建新的工作簿和工作表
-        wb_new = openpyxl.Workbook()
-        ws_new = wb_new.active
-
-        start_row = wb_source.max_row * start_scale
-        end_row = wb_source.max_row * end_scale
-
-        # 遍历原始文件的指定范围，将数据复制到新文件
-        for row in range(start_row, end_row + 1):  # 遍历行
-            for col in range(start_col, end_col + 1):  # 遍历列
-                cell_value = ws_source.cell(row=row, column=col).value  # 获取原始单元格的值
-                ws_new.cell(row=row - start_row + 1, column=col - start_col + 1, value=cell_value)  # 写入新文件
-
-        # 保存新文件
-        wb_new.save(new_file)
-        print(f"数据已成功提取到新文件: {new_file}")
-    except FileNotFoundError:
-        print(f"错误: 找不到文件 {source_file}")
-    except Exception as e:
-        print(f"发生错误: {e}")
+    print(f"数据已成功提取到新文件: {new_file}")
 
 
 def format_folders(dataset_path, data_path):
     """
     实验数据集格式规整化
     :param dataset_path: 数据集父目录。如：C:/.../数据集
-    :param data_path: 实验数据父目录。如：C:/.../测试
+    :param data_path: 实验数据父目录。如：E:/.../测试
     """
     for dir_name in os.listdir(data_path):
         index = 0
-        for file_name in os.listdir(os.path.join(data_path, dir_name)):
+        dir_path = os.path.join(data_path, dir_name)  # E://...//测试//食指弯曲
+        for file_name in os.listdir(dir_path):
+            index += 1
             # 匹配间隔时间
             pattern = r'（(.*?)）'
             interval = re.findall(pattern, file_name)[0]
-            for i in range(0, int(interval)):
-                new_name = f"记录{index + i}（{interval}）.xlsx"
-                # 带间隔时间移动到数据集中
-                shutil.move(os.path.join(data_path, dir_name, file_name),
-                            os.path.join(dataset_path, dir_name, new_name))
-                print(f"{new_name}移动完毕")
+            origin_path = os.path.join(dir_path, file_name)  # 原始文件：E://...//测试//食指弯曲//xxx（1.5）
+
+            if origin_path.endswith('.csv'):
+                # 读取 CSV 文件
+                original_df = pd.read_csv(origin_path)
+                # 获取总行数
+                max_time = original_df.iloc[-1, 0]
+                total_part = int(max_time // float(interval))
+                row_per_part = len(original_df) // total_part
+                # 根据间隔时间分割原始文件，并移动到新路径
+                for i in range(2, total_part):
+                    new_name = f"记录{index}.{i}.csv"
+                    new_path = os.path.join(dataset_path, dir_name, new_name)  # 新文件：C://...//数据集//食指弯曲//记录1.1.csv
+                    # 提取数据到新的 CSV 文件
+                    extract_csv_data(original_df, new_path, i * row_per_part, (i + 1) * row_per_part)
+                    print(f"{dir_name}-{new_name}处理完毕")
 
 
 def pdf_construct_dataset(pdf_path, dataset_path):

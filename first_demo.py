@@ -18,7 +18,7 @@ from sklearn.model_selection import train_test_split
 
 # 1.读取数据
 # 使用 pandas 读取 Excel 文件，并用 os 遍历所有文件。
-data_dir = r"E://数据集"  # 数据集根目录
+data_dir = r"C:\Users\30744\Desktop\手互\数据集"  # 数据集根目录
 gestures = os.listdir(data_dir)  # 获取手势类别名（文件夹名）“gesture1”
 gesture_labels = {gesture: idx for idx, gesture in enumerate(gestures)}  # 映射手势到索引
 
@@ -30,7 +30,7 @@ for gesture in gestures:
     folder_path = os.path.join(data_dir, gesture)
     for file in os.listdir(folder_path):
         file_path = os.path.join(folder_path, file)
-        df = pd.read_excel(file_path, header=None)  # 读取 Excel
+        df = pd.read_csv(file_path, header=None)  # 读取csv文件
         voltage_signal = df.iloc[:, 1].values  # 取第二列（电压）
         X.append(voltage_signal)
         y.append(gesture_labels[gesture])
