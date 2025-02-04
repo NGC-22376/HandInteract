@@ -1,10 +1,10 @@
 import matplotlib.pyplot as plt
 from utils.visualization import draw_signal
+from utils.util import print_msg
 from scipy import signal
 import numpy as np
 import pandas as pd
 import pywt
-import winsound
 
 def signal_filter(origin_signal, cutoff_freq):
     # 低通滤波器
@@ -27,7 +27,6 @@ def signal_filter(origin_signal, cutoff_freq):
     plt.show()
 
 
-
 def cwt(data_path):
     """
     使用小波变换，分析信号序列的频率构成
@@ -48,7 +47,7 @@ def cwt(data_path):
     center_freq = pywt.central_frequency(wavelet)  # Morlet小波中心频率=0.8125
 
     # 计算尺度范围，得到500个在对数域上均匀分布的尺度值，即最终的结果对低频更敏感
-    print("开始小波变换")
+    print_msg("开始小波变换")
     scales = np.logspace(np.log10(center_freq * fs / 100), np.log10(center_freq * fs / 0.1), num=500)
     coefficients, frequencies = pywt.cwt(fmg_signal, scales, wavelet, sampling_period=1 / fs)
 
@@ -74,14 +73,23 @@ def cwt(data_path):
         plt.ylim(begin, end)
         plt.colorbar(label='Coefficient Magnitude')
 
-    draw_after_transform(323, coefficients[mask_to1], frequencies[mask_to1], 20, 0.1, 1)
-    draw_after_transform(324, coefficients[mask_to10], frequencies[mask_to10], 20, 1, 10)
-    draw_after_transform(325, coefficients[mask_to50], frequencies[mask_to50], 80, 10, 50)
-    draw_after_transform(326, coefficients[mask_to100], frequencies[mask_to100], 100, 50, 100)
+    # 保证打印非空频率
+    if np.any(mask_to1):
+        draw_after_transform(323, coefficients[mask_to1], frequencies[mask_to1], 20, 0.1, 1)
+    if np.any(mask_to10):
+        draw_after_transform(324, coefficients[mask_to10], frequencies[mask_to10], 20, 1, 10)
+    if np.any(mask_to50):
+        draw_after_transform(325, coefficients[mask_to50], frequencies[mask_to50], 80, 10, 50)
+    if np.any(mask_to100):
+        draw_after_transform(326, coefficients[mask_to100], frequencies[mask_to100], 100, 50, 100)
 
     plt.tight_layout()
     plt.show()
 
-    winsound.Beep(1000, 1000)
+    print_msg("小波变换结束")
 
 cwt(r"C:\Users\30744\Desktop\手互\数据集3\大拇指\大拇指（1.5）.csv")
+cwt(r"C:\Users\30744\Desktop\手互\数据集3\食指\食4指（3）.csv")
+cwt(r"C:\Users\30744\Desktop\手互\数据集3\无名指\无名指（1.5）.csv")
+cwt(r"C:\Users\30744\Desktop\手互\数据集3\小指\小5498指（1.5）.csv")
+cwt(r"C:\Users\30744\Desktop\手互\数据集3\中指\中指（1.5）.csv")
