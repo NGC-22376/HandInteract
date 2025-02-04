@@ -3,7 +3,7 @@
 """
 
 import os
-
+import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 
@@ -51,3 +51,13 @@ def plot_and_save_csv(dir_path, is_show):
                 plt.show()
             else:
                 plt.close()
+
+
+def draw_signal(signal, pos):
+    dt = 4e-5
+    t = np.arange(0, len(signal) * dt, dt)
+    plt.subplot(pos)
+    plt.plot(t, signal)
+    plt.xlabel("Time/s")
+    plt.ylabel("Voltage/mV")
+    plt.title("Raw Signal")

@@ -1,8 +1,32 @@
 import matplotlib.pyplot as plt
+from utils.visualization import draw_signal
+from scipy import signal
 import numpy as np
 import pandas as pd
 import pywt
 import winsound
+
+def signal_filter(origin_signal, cutoff_freq):
+    # 低通滤波器
+    fs = 1 / 4e-5
+    nyquist = 0.5 * fs  # 奈奎斯特频率
+    normal_cutoff = cutoff_freq / nyquist  # 标准化截止频率
+    b, a, _  = signal.butter(4, normal_cutoff, btype='low')  # 4阶巴特沃斯低通滤波器
+
+    # 应用低通滤波器
+    filtered_signal = signal.filtfilt(b, a, origin_signal)
+
+    # 中值滤波
+    signal.medfilt(origin_signal, kernel_size=5)
+
+    # 可视化
+    plt.figure(figsize=(12, 8))
+    draw_signal(origin_signal, 211)
+    draw_signal(filtered_signal, 212)
+    plt.tight_layout()
+    plt.show()
+
+
 
 def cwt(data_path):
     """
@@ -28,7 +52,7 @@ def cwt(data_path):
     scales = np.logspace(np.log10(center_freq * fs / 100), np.log10(center_freq * fs / 0.1), num=500)
     coefficients, frequencies = pywt.cwt(fmg_signal, scales, wavelet, sampling_period=1 / fs)
 
-    # 提取不同频段的子集
+    # 提取不同频段的子集。布尔掩码列表，按位判断frequencies中的每个值满足条件与否，再按位将两个掩码表做&运算
     mask_to1 = (frequencies >= 0.1) & (frequencies <= 1)
     mask_to10 = (frequencies > 1) & (frequencies <= 10)
     mask_to50 = (frequencies > 10) & (frequencies <= 50)
@@ -38,11 +62,7 @@ def cwt(data_path):
     plt.figure(figsize=(15, 10))
 
     # 原始图像
-    plt.subplot(231)
-    plt.plot(t, fmg_signal)
-    plt.xlabel("Time/s")
-    plt.ylabel("Voltage/mV")
-    plt.title("Raw Signal")
+    draw_signal(fmg_signal, 321)
 
     # 小波时频图
     def draw_after_transform(pos, coefficients, frequencies, levels, begin, end):
@@ -54,10 +74,10 @@ def cwt(data_path):
         plt.ylim(begin, end)
         plt.colorbar(label='Coefficient Magnitude')
 
-    draw_after_transform(233, coefficients[mask_to1], frequencies[mask_to1], 20, 0.1, 1)
-    draw_after_transform(234, coefficients[mask_to10], frequencies[mask_to10], 20, 1, 10)
-    draw_after_transform(235, coefficients[mask_to50], frequencies[mask_to50], 80, 10, 50)
-    draw_after_transform(236, coefficients[mask_to100], frequencies[mask_to100], 100, 50, 100)
+    draw_after_transform(323, coefficients[mask_to1], frequencies[mask_to1], 20, 0.1, 1)
+    draw_after_transform(324, coefficients[mask_to10], frequencies[mask_to10], 20, 1, 10)
+    draw_after_transform(325, coefficients[mask_to50], frequencies[mask_to50], 80, 10, 50)
+    draw_after_transform(326, coefficients[mask_to100], frequencies[mask_to100], 100, 50, 100)
 
     plt.tight_layout()
     plt.show()
