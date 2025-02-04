@@ -15,6 +15,14 @@ from docx.shared import Cm
 
 
 def extract_csv_data(original_df, new_file, start_row, end_row):
+    """
+    将csv文件的指定行复制到新文件中
+    :param original_df:原始csv数据
+    :param new_file: 新数据保存的地址
+    :param start_row:转存的起始行数
+    :param end_row:转存的结束行数
+    :return:null
+    """
     if not os.path.exists(os.path.dirname(new_file)):
         os.makedirs(os.path.dirname(new_file))
     # 截取数据并保存为新的 CSV 文件
@@ -26,7 +34,7 @@ def extract_csv_data(original_df, new_file, start_row, end_row):
 
 def format_folders(dataset_path, data_path):
     """
-    实验数据集格式规整化
+    实验数据集格式规整化，将乱命名的文件规整为...//手势名//记录xx（间隔时间）。这一步完成后，数据即可进入预处理程序
     :param dataset_path: 数据集父目录。如：C:/.../数据集
     :param data_path: 实验数据父目录。如：E:/.../测试
     """
@@ -58,7 +66,7 @@ def format_folders(dataset_path, data_path):
 
 def pdf_construct_dataset(pdf_path, dataset_path):
     """
-    构建数据集目录，并新建手势数分类的文档。
+    根据整理的手语采样集构建数据集目录，并新建手势数分类的文档。
     执行完后，数据集格式：单手势/动作名，多手势/动作名，并且在pdf_path的同一父目录下新建用手势数分类的文档，其中包含词语名-手势示意图。
     :param pdf_path: "手语采样数据集.pdf"存在的路径
     :param dataset_path: 数据集建立的位置。如：C:/.../数据集
@@ -103,6 +111,15 @@ def pdf_construct_dataset(pdf_path, dataset_path):
 
 
 def construct_dataset(docx_path, dataset_path, dictionary, complicate_key_list, simple_key_list):
+    """
+    根据手势名-图片键值对，构建数据集格式、按照手势数分类的采样集.docx
+    :param docx_path: docx文档的位置
+    :param dataset_path: 建立数据集的位置
+    :param dictionary: 字典
+    :param complicate_key_list:单动作手势名
+    :param simple_key_list: 多动作手势名
+    :return:
+    """
     # 创建数据集目录结构
     simple_path = os.path.join(dataset_path, "单动作手势")
     complicate_path = os.path.join(dataset_path, "多动作手势")
