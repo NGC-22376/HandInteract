@@ -20,7 +20,7 @@ def signal_filter(origin_signal):
     fs = 1 / 4e-5
     fmax = 110
     nyquist = fs / 2
-    cutoff_high = 2.5 * fmax  # 低频滤波截止频率，要求大于最高频的奈奎斯特频率
+    cutoff_high = 2.5 * fmax / 2  # 低频滤波截止频率，要求大于最高频的奈奎斯特频率
     cutoff_low = 1 / nyquist  # 标准化高通滤波截止频率
 
     # 可视化
@@ -32,13 +32,13 @@ def signal_filter(origin_signal):
     draw_signal(origin_signal, 222, "After 中值滤波")
 
     # 高通滤波-去除运动伪影
-    b, a= butter(4, cutoff_low, btype='high')
+    b, a = butter(4, cutoff_low, btype='high')
     filtfilt(b, a, origin_signal)
     draw_signal(origin_signal, 223, "After 高通滤波")
 
     # 低通滤波+降采样
     filtered = signal.decimate(origin_signal, int(fs // cutoff_high), ftype="iir")
-    draw_signal(filtered, 224, "After 低通滤波和降采样")
+    draw_signal(filtered, 224, "After 低通滤波和降采样", dt=1 / cutoff_high)
 
     # 展示图象
     plt.tight_layout()
@@ -59,7 +59,7 @@ def cwt(data_path):
     # 获取原始数据
     type_name = os.path.basename(os.path.dirname(data_path))
     df = pd.read_csv(data_path, header=None, skiprows=4)
-    fmg_signal = df.iloc[:, 1].values.astype(np.float32) * 1000
+    fmg_signal = df.iloc[:, 1].values.astype(np.float32)
     t = np.arange(0, len(fmg_signal) * dt, dt)
 
     # 使用Morlet小波
@@ -108,6 +108,3 @@ def cwt(data_path):
 
     plt.tight_layout()
     plt.show()
-
-
-

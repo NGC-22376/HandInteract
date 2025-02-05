@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 from matplotlib import font_manager
 
+
 def plot_and_save_csv(dir_path, is_show):
     """
     适用数据集格式：取样轮次/手势名/该手势的多个实验数据。如：第一次试采/谢谢/样本1.csv。
@@ -54,18 +55,18 @@ def plot_and_save_csv(dir_path, is_show):
                 plt.close()
 
 
-def draw_signal(signal, pos, name):
+def draw_signal(signal, pos, name, dt=4e-5):
     """
     绘制信号图像
     :param signal: 信号
     :param name: 图像名
     :param pos: 处于网格图的位置
+    :param dt: 信号的时间间隔
     :return:
     """
-    dt = 4e-5
     t = np.arange(0, len(signal) * dt, dt)
     plt.subplot(pos)
     plt.plot(t, signal)
     plt.xlabel("Time/s")
-    plt.ylabel("Voltage/mV")
-    plt.title(name,fontproperties=font_manager.FontProperties(fname=r"C:\字体\BiLuoSiJianHeLuoQingSong-2.ttf"))
+    plt.ylabel("Voltage/V")
+    plt.title(name, fontproperties=font_manager.FontProperties(fname=r"C:\字体\BiLuoSiJianHeLuoQingSong-2.ttf"))
