@@ -6,7 +6,6 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder
 
 # 数据集路径
 data_dir = r"C:\Users\30744\Desktop\手互\数据集"  # 数据集根目录

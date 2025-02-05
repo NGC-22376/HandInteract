@@ -15,7 +15,7 @@ def signal_filter(origin_signal):
     """
     中值滤波->高通滤波->低通滤波->降采样
     :param origin_signal:
-    :return:
+    :return:滤波后的信号
     """
     fs = 1 / 4e-5
     fmax = 110
@@ -32,7 +32,7 @@ def signal_filter(origin_signal):
     draw_signal(origin_signal, 222, "After 中值滤波")
 
     # 高通滤波-去除运动伪影
-    b, a, _ = butter(4, cutoff_low, btype='high')
+    b, a= butter(4, cutoff_low, btype='high')
     filtfilt(b, a, origin_signal)
     draw_signal(origin_signal, 223, "After 高通滤波")
 
@@ -43,6 +43,7 @@ def signal_filter(origin_signal):
     # 展示图象
     plt.tight_layout()
     plt.show()
+    return filtered
 
 
 def cwt(data_path):
@@ -109,9 +110,4 @@ def cwt(data_path):
     plt.show()
 
 
-path = r"C:\Users\30744\Desktop\手互\数据集2.1"
-dirs = os.listdir(path)
-for d in dirs:
-    for f in os.listdir(os.path.join(path, d))[:3]:
-        p = os.path.join(path, d, f)
-        cwt(p)
+
