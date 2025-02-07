@@ -108,5 +108,7 @@ def cwt(data_path, img_dir):
         print(f"最高频率：{frequencies[mask_over100]}")
 
     plt.tight_layout()
+
+    # 保存并显示图象
     plt.savefig(os.path.join(img_dir, type_name + os.path.basename(data_path) + ".png"))
     plt.show()

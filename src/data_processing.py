@@ -19,10 +19,13 @@ def data_processing(dataset_path, is_cwt):
     labels = []
 
     if is_cwt:
+        os.makedirs(os.path.join(os.path.dirname(dataset_path), "小波变换分析图像"))
         for category in categories:
             datas = os.listdir(os.path.join(dataset_path, category))
-            cwt(os.path.join(dataset_path, category, datas[0]), os.path.join(os.path.dirname(dataset_path), "小波变换分析图像"))
-            cwt(os.path.join(dataset_path, category, datas[-1]), os.path.join(os.path.dirname(dataset_path), "小波变换分析图像"))
+            cwt(os.path.join(dataset_path, category, datas[0]),
+                os.path.join(os.path.dirname(dataset_path), "小波变换分析图像"))
+            cwt(os.path.join(dataset_path, category, datas[-1]),
+                os.path.join(os.path.dirname(dataset_path), "小波变换分析图像"))
         exit(0)
 
     for category in categories:

@@ -1,11 +1,12 @@
 import os
-import pandas as pd
+
 import numpy as np
+import pandas as pd
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader, TensorDataset
 from sklearn.model_selection import train_test_split
+from torch.utils.data import DataLoader, TensorDataset
 
 # 数据集路径
 data_dir = r"D:\大二上\互联网加\手互\数据集-经过dataset_construction"  # 数据集根目录
@@ -65,7 +66,6 @@ def print_shape_hook(module, input, output):
     print(f"  Output shape: {output.shape}\n")
 
 
-
 # 定义模型
 class GestureRecognitionModel(nn.Module):
     def __init__(self, input_size, num_classes, max_len):
@@ -108,7 +108,6 @@ class GestureRecognitionModel(nn.Module):
         x = self.dropout(x)
         x = self.fc2(x)  # 输出层
         return x
-
 
 
 # 模型实例化（不需要考虑GPU设备）
