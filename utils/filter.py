@@ -46,10 +46,11 @@ def signal_filter(origin_signal):
     return filtered
 
 
-def cwt(data_path):
+def cwt(data_path, img_dir):
     """
     使用小波变换，分析信号序列的频率构成
     :param data_path: 数据文件路径
+    :param img_dir: 小波变换图象的存储路径文件夹
     :return:
     """
     # 定义采样频率
@@ -107,4 +108,5 @@ def cwt(data_path):
         print(f"最高频率：{frequencies[mask_over100]}")
 
     plt.tight_layout()
+    plt.savefig(os.path.join(img_dir, type_name + os.path.basename(data_path) + ".png"))
     plt.show()
