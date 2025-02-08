@@ -25,20 +25,20 @@ def signal_filter(origin_signal):
 
     # 可视化
     plt.figure(figsize=(12, 8))
-    draw_signal(origin_signal, 221, "Raw Signal")
+    draw_signal(origin_signal, 2, 2, 1, "Raw Signal")
 
     # 中值滤波-去除尖峰
     signal.medfilt(origin_signal, kernel_size=5)
-    draw_signal(origin_signal, 222, "After 中值滤波")
+    draw_signal(origin_signal, 2, 2, 2, "After 中值滤波")
 
     # 高通滤波-去除运动伪影
     b, a = butter(4, cutoff_low, btype='high')
     filtfilt(b, a, origin_signal)
-    draw_signal(origin_signal, 223, "After 高通滤波")
+    draw_signal(origin_signal, 2, 2, 3, "After 高通滤波")
 
     # 低通滤波+降采样
     filtered = signal.decimate(origin_signal, int(fs // cutoff_high), ftype="iir")
-    draw_signal(filtered, 224, "After 低通滤波和降采样", dt=1 / cutoff_high)
+    draw_signal(filtered, 2, 2, 4, "After 低通滤波和降采样", dt=1 / cutoff_high)
 
     # 展示图象
     plt.tight_layout()
@@ -83,7 +83,7 @@ def cwt(data_path, img_dir):
     plt.figure(figsize=(15, 10))
 
     # 原始图像
-    draw_signal(fmg_signal, 321, "Raw Signal " + type_name)
+    draw_signal(fmg_signal, 3, 2, 1, "Raw Signal " + type_name)
 
     # 小波时频图
     def draw_after_transform(pos, coefficients, frequencies, levels, begin, end):

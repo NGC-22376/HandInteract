@@ -55,7 +55,7 @@ def plot_and_save_csv(dir_path, is_show):
                 plt.close()
 
 
-def draw_signal(signal, pos, name, dt=4e-5):
+def draw_signal(signal, line, row, idx, name, dt=4e-5):
     """
     绘制信号图像
     :param signal: 信号
@@ -65,7 +65,7 @@ def draw_signal(signal, pos, name, dt=4e-5):
     :return:
     """
     t = np.arange(0, len(signal) * dt, dt)
-    plt.subplot(pos)
+    plt.subplot(line, row, idx)
     plt.plot(t, signal)
     plt.xlabel("Time/s")
     plt.ylabel("Voltage/V")
