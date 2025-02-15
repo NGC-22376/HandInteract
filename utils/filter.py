@@ -11,12 +11,14 @@ from utils.util import print_msg
 from utils.visualization import draw_signal
 
 
-def signal_filter(origin_signal):
+def signal_filter(data_path):
     """
     中值滤波->高通滤波->低通滤波->降采样
-    :param origin_signal:
+    :param data_path:存储原始信号的文件路径
     :return:滤波后的信号
     """
+    df = pd.read_csv(data_path)  # 读取信号
+    origin_signal = df.iloc[:, 1].values.astype(np.float32)
     fs = 1 / 4e-5
     fmax = 110
     nyquist = fs / 2

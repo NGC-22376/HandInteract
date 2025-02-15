@@ -32,9 +32,7 @@ def data_processing(dataset_path, is_cwt):
         path = os.path.join(dataset_path, category)
         for file_name in os.listdir(path):
             file = os.path.join(dataset_path, category, file_name)
-            df = pd.read_csv(file)  # 读取信号
-            origin_signal = df.iloc[:, 1].values.astype(np.float32)
-            filtered_signal = signal_filter(origin_signal)  # 滤波
+            filtered_signal = signal_filter(file)  # 滤波
             # 归一化
             data = torch.tensor(filtered_signal, dtype=torch.float32)
             normalized_data = (data - torch.mean(data)) / torch.std(data)
