@@ -3,6 +3,7 @@
 """
 
 import os
+from datetime import datetime
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -70,3 +71,8 @@ def draw_signal(signal, line, row, idx, name, dt=4e-5):
     plt.xlabel("Time/s")
     plt.ylabel("Voltage/V")
     plt.title(name, fontproperties=font_manager.FontProperties(fname=r"C:\字体\BiLuoSiJianHeLuoQingSong-2.ttf"))
+
+
+def print_msg(msg):
+    t = datetime.now()
+    print(f"{t.strftime('%Y-%m-%d %H:%M:%S')}-{msg}")

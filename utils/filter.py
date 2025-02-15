@@ -7,8 +7,7 @@ import pywt
 from scipy import signal
 from scipy.signal import butter, filtfilt
 
-from utils.util import print_msg
-from utils.visualization import draw_signal
+from utils.visualization import draw_signal, print_msg
 
 
 def signal_filter(data_path):
