@@ -3,10 +3,10 @@ from utils.reorder_words import reorder
 
 # 获取输入数据并滤波
 data_path = ""
-signal_filter(data_path)
+filtered_signal = signal_filter(data_path)
 
 # 通过网络得到信号中包含的所有手势名
-words = model()
+words = model(filtered_signal)
 
 # 还原为正常语序
 sequence = reorder(words)
