@@ -4,15 +4,15 @@ from openvoice import se_extractor
 from openvoice.api import ToneColorConverter
 from melo.api import TTS
 
-ckpt_converter = 'checkpoints_v2/converter'
+ckpt_converter = './openvoice/checkpoints_v2/converter'
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 output_dir = 'outputs_v2'
 
 tone_color_converter = ToneColorConverter(f'{ckpt_converter}/config.json', device=device)
-tone_color_converter.load_ckpt(r'.\openvoice\0421_example.pth')
+tone_color_converter.load_ckpt(f'{ckpt_converter}/checkpoint.pth')
 
 os.makedirs(output_dir, exist_ok=True)
-reference_speaker = r"C:\Users\30744\Downloads\example.m4a" # This is the voice you want to clone
+reference_speaker = r"C:\Users\30744\Downloads\output.wav" # This is the voice you want to clone
 target_se, audio_name = se_extractor.get_se(reference_speaker, tone_color_converter, vad=True)
 
 
@@ -34,7 +34,7 @@ for language, text in texts.items():
         speaker_id = speaker_ids[speaker_key]
         speaker_key = speaker_key.lower().replace('_', '-')
 
-        source_se = torch.load(f'checkpoints_v2/base_speakers/ses/{speaker_key}.pth', map_location=device)
+        source_se = torch.load(f'./openvoice/checkpoints_v2/base_speakers/ses/{speaker_key}.pth', map_location=device)
         model.tts_to_file(text, speaker_id, src_path, speed=speed)
         save_path = f'{output_dir}/output_v2_{speaker_key}.wav'
 
