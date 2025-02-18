@@ -28,7 +28,7 @@ def data_processing(dataset_path, is_cwt):
                 os.path.join(os.path.dirname(dataset_path), "小波变换分析图像"))
         exit(0)
 
-    for category in categories:
+    for idx, category in enumerate(categories):
         path = os.path.join(dataset_path, category)
         for file_name in os.listdir(path):
             file = os.path.join(dataset_path, category, file_name)
@@ -41,7 +41,7 @@ def data_processing(dataset_path, is_cwt):
             # 添加到列表内
             signals.append(feature_windows)
             for i in range(0, window_num):
-                labels.append(category)
+                labels.append(idx)
 
     return signals, labels
 
