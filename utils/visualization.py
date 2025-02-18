@@ -9,6 +9,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib import font_manager
+from matplotlib import rcParams
+
+# 设置默认字体为黑体（SimHei 适用于 Windows，AppleGothic 适用于 Mac）
+rcParams['font.sans-serif'] = ['SimHei', 'Arial']  # SimHei 显示中文，Arial 作为备用
+rcParams['axes.unicode_minus'] = False  # 解决负号 '-' 显示为方块的问题
 
 
 def plot_and_save_csv(dir_path, is_show):
@@ -40,7 +45,7 @@ def plot_and_save_csv(dir_path, is_show):
             plt.xlabel('时间/s')  # 设置横坐标名称
             plt.ylabel('信号强度/V')  # 设置纵坐标名称
             plt.title(f'动作信号强度：{dir_name}{index + 1}')  # 设置图表标题
-            plt.axis([0, df.values[-1:][:, 0], y_min, y_max])  # 设置xy轴范围
+            plt.axis([df.values[0:1][:, 0], df.values[-1:][:, 0], y_min, y_max])  # 设置xy轴范围
 
             # 保存图片
             parent_path = os.path.join(os.path.dirname(dir_path), dir_path + "可视化文件", dir_name)
@@ -70,7 +75,7 @@ def draw_signal(signal, line, row, idx, name, dt=4e-5):
     plt.plot(t, signal)
     plt.xlabel("Time/s")
     plt.ylabel("Voltage/V")
-    plt.title(name, fontproperties=font_manager.FontProperties(fname=r"C:\字体\BiLuoSiJianHeLuoQingSong-2.ttf"))
+    plt.title(name)
 
 
 def print_msg(msg):
