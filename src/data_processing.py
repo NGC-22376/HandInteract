@@ -1,8 +1,7 @@
 import os
 
-import numpy as np
-import pandas as pd
 import torch
+
 from utils.extract_feature import get_feature_window
 from utils.filter import signal_filter, cwt
 
@@ -30,6 +29,8 @@ def data_processing(dataset_path, is_cwt):
 
     for idx, category in enumerate(categories):
         path = os.path.join(dataset_path, category)
+        signals.append([])
+        labels.append([])
         for file_name in os.listdir(path):
             file = os.path.join(dataset_path, category, file_name)
             filtered_signal = signal_filter(file)  # 滤波
@@ -39,8 +40,7 @@ def data_processing(dataset_path, is_cwt):
             # 滑动窗口+特征提取
             feature_windows, window_num = get_feature_window(normalized_data, window_size=32)
             # 添加到列表内
-            signals.append(feature_windows)
-            labels.append([idx] * window_num)
+            signals[-1].extend(feature_windows)
+            labels[-1].extend([idx] * window_num)
     return signals, labels
 
-data_processing(r"C:\Users\30744\Desktop\手互\数据集", 0)

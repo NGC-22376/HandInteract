@@ -13,10 +13,12 @@ def get_feature_window(signal, window_size):
     """
     # 滑动窗口，丢弃最后一个不足长度的窗口
     window_num = len(signal) // window_size
-    windows = [np.array(signal[i:i + window_size]) for i in range(0, len(signal), window_size)]
+    windows = [np.array(signal[i:i + window_size]) for i in range(0, window_num)]
     features = []
     for window in windows:
-        features.append([window[0]] * 10)
+        features.append([])
+        for i in window:
+            features[-1].append([i] * 10)
     #     features.append([])
     #     # 计算 10 个特征
     #     features[-1].append(np.mean(window))  # 均值

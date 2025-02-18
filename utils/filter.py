@@ -25,25 +25,25 @@ def signal_filter(data_path):
     cutoff_low = 1 / nyquist  # 标准化高通滤波截止频率
 
     # 可视化
-    plt.figure(figsize=(12, 8))
-    draw_signal(origin_signal, 2, 2, 1, "Raw Signal")
+    # plt.figure(figsize=(12, 8))
+    # draw_signal(origin_signal, 2, 2, 1, "Raw Signal")
 
     # 中值滤波-去除尖峰
     signal.medfilt(origin_signal, kernel_size=5)
-    draw_signal(origin_signal, 2, 2, 2, "After 中值滤波")
+    # draw_signal(origin_signal, 2, 2, 2, "After 中值滤波")
 
     # 高通滤波-去除运动伪影
     b, a = butter(4, cutoff_low, btype='high')
     filtfilt(b, a, origin_signal)
-    draw_signal(origin_signal, 2, 2, 3, "After 高通滤波")
+    # draw_signal(origin_signal, 2, 2, 3, "After 高通滤波")
 
     # 低通滤波+降采样
     filtered = signal.decimate(origin_signal, int(fs // cutoff_high), ftype="iir")
-    draw_signal(filtered, 2, 2, 4, "After 低通滤波和降采样", dt=1 / cutoff_high)
+    # draw_signal(filtered, 2, 2, 4, "After 低通滤波和降采样", dt=1 / cutoff_high)
 
     # 展示图象
-    plt.tight_layout()
-    plt.show()
+    # plt.tight_layout()
+    # plt.show()
     return filtered
 
 
