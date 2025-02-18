@@ -3,8 +3,8 @@ from utils.dataset_construction import *
 from data_processing import *
 
 # 建立数据集
-data_path = r"C:\Users\30744\Desktop\手互\数据集2"
-dataset_path = r"C:\Users\30744\Desktop\手互\数据集2.1"
+data_path = r"C:\Users\30744\Desktop\手互\数据集"
+dataset_path = r"C:\Users\30744\Desktop\手互\数据集"
 pdf_path = r"C:\Users\30744\Desktop\手互\手语采样数据集.pdf"
 pdf_construct_dataset(pdf_path, dataset_path)
 

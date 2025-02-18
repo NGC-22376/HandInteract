@@ -34,7 +34,7 @@ def data_processing(dataset_path, is_cwt):
             file = os.path.join(dataset_path, category, file_name)
             filtered_signal = signal_filter(file)  # 滤波
             # 归一化
-            data = torch.tensor(filtered_signal, dtype=torch.float32)
+            data = torch.tensor(filtered_signal.copy(), dtype=torch.float32)
             normalized_data = (data - torch.mean(data)) / torch.std(data)
             # 添加到列表内
             signals.append(normalized_data)
