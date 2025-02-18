@@ -40,9 +40,7 @@ def data_processing(dataset_path, is_cwt):
             feature_windows, window_num = get_feature_window(normalized_data, window_size=32)
             # 添加到列表内
             signals.append(feature_windows)
-            for i in range(0, window_num):
-                labels.append(idx)
-
+            labels.append([idx] * window_num)
     return signals, labels
 
 data_processing(r"C:\Users\30744\Desktop\手互\数据集", 0)
