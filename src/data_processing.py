@@ -3,7 +3,7 @@ import os
 import numpy as np
 import pandas as pd
 import torch
-
+from utils.extract_feature import get_feature_window
 from utils.filter import signal_filter, cwt
 
 
@@ -36,8 +36,13 @@ def data_processing(dataset_path, is_cwt):
             # 归一化
             data = torch.tensor(filtered_signal.copy(), dtype=torch.float32)
             normalized_data = (data - torch.mean(data)) / torch.std(data)
+            # 滑动窗口+特征提取
+            feature_windows, window_num = get_feature_window(normalized_data, window_size=32)
             # 添加到列表内
-            signals.append(normalized_data)
-            labels.append(category)
+            signals.append(feature_windows)
+            for i in range(0, window_num):
+                labels.append(category)
 
     return signals, labels
+
+data_processing(r"C:\Users\30744\Desktop\手互\数据集", 0)

@@ -1,0 +1,25 @@
+"""
+窗口化数据和提取特征
+"""
+import numpy as np
+from scipy.stats import skew, kurtosis
+
+def get_feature_window(signal, window_size):
+    # 滑动窗口，丢弃最后一个不足长度的窗口
+    window_num = len(signal) // window_size
+    windows = [np.array(signal[i:i + window_size]) for i in range(0, len(signal), window_size)]
+    features = []
+    for window in windows:
+        features.append([])
+        # 计算 10 个特征
+        features[-1].append(np.mean(window))  # 均值
+        features[-1].append(np.var(window))  # 方差
+        features[-1].append(np.std(window))  # 标准差
+        features[-1].append(np.max(window))  # 最大值
+        features[-1].append(np.min(window))  # 最小值
+        features[-1].append(np.sqrt(np.mean(window ** 2)))  # 均方根 (RMS)
+        features[-1].append(skew(window))  # 偏度
+        features[-1].append(kurtosis(window))  # 峭度
+        features[-1].append(np.max(window) - np.min(window))  # 峰峰值
+        features[-1].append(np.std(window) / np.mean(window) if np.mean(window) != 0 else 0)  # 变异系数
+    return features, window_num
