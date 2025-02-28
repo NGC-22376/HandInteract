@@ -44,3 +44,5 @@ def data_processing(dataset_path, is_cwt):
             labels[-1].extend([idx] * window_num)
     return signals, labels
 
+
+X, y = data_processing(r"C:\Users\30744\Desktop\手互\数据集", 0)
