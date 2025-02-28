@@ -40,12 +40,11 @@ def format_folders(dataset_path, data_path):
     """
     for dir_name in os.listdir(data_path):
         index = 0
+        interval = 3.5
+
         dir_path = os.path.join(data_path, dir_name)  # E://...//测试//食指弯曲
         for file_name in os.listdir(dir_path):
             index += 1
-            # 匹配间隔时间
-            pattern = r'（(.*?)）'
-            interval = re.findall(pattern, file_name)[0]
             origin_path = os.path.join(dir_path, file_name)  # 原始文件：E://...//测试//食指弯曲//xxx（1.5）
 
             if origin_path.endswith('.csv'):

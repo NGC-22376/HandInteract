@@ -2,7 +2,7 @@
 窗口化数据和提取特征
 """
 import numpy as np
-from scipy.stats import skew, kurtosis
+
 
 def get_feature_window(signal, window_size):
     """

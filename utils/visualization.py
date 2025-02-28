@@ -8,7 +8,6 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from matplotlib import font_manager
 from matplotlib import rcParams
 
 # 设置默认字体为黑体（SimHei 适用于 Windows，AppleGothic 适用于 Mac）
@@ -44,7 +43,7 @@ def plot_and_save_csv(dir_path, is_show):
             plt.plot(df.values[:, 0], df.values[:, 1])  # 设置横纵轴数据
             plt.xlabel('时间/s')  # 设置横坐标名称
             plt.ylabel('信号强度/V')  # 设置纵坐标名称
-            plt.title(f'动作信号强度：{dir_name}{index + 1}')  # 设置图表标题
+            plt.title(f'动作信号强度：{dir_name}-{file_name}')  # 设置图表标题
             plt.axis([df.values[0:1][:, 0], df.values[-1:][:, 0], y_min, y_max])  # 设置xy轴范围
 
             # 保存图片
@@ -63,7 +62,7 @@ def plot_and_save_csv(dir_path, is_show):
 
 def draw_signal(signal, line, row, idx, name, dt=4e-5):
     """
-    绘制信号图像
+    绘制信号图像（包括子图）
     :param signal: 信号
     :param name: 图像名
     :param pos: 处于网格图的位置
