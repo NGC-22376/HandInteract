@@ -47,7 +47,7 @@ def plot_and_save_csv(dir_path, is_show):
             plt.axis([df.values[0:1][:, 0], df.values[-1:][:, 0], y_min, y_max])  # 设置xy轴范围
 
             # 保存图片
-            parent_path = os.path.join(os.path.dirname(dir_path), dir_path + "可视化文件", dir_name)
+            parent_path = os.path.join(os.path.dirname(dir_path), dir_path + "-Vis", dir_name)
             name = f'{index + 1}' + '.png'
             os.makedirs(parent_path, exist_ok=True)
             save_path = os.path.join(parent_path, name)

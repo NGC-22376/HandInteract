@@ -9,6 +9,32 @@ from scipy.signal import butter, filtfilt
 
 from utils.visualization import draw_signal, print_msg
 
+class KalmanFilter:
+    def __init__(self, process_variance, measurement_variance, estimated_measurement_variance):
+        # 过程噪声方差
+        self.process_variance = process_variance
+        # 测量噪声方差
+        self.measurement_variance = measurement_variance
+        # 估计测量误差方差
+        self.estimated_measurement_variance = estimated_measurement_variance
+
+        # 初始估计值
+        self.estimate = 0
+        # 初始误差估计
+        self.estimate_error = 1
+
+    def update(self, measurement):
+        # 卡尔曼增益
+        kalman_gain = self.estimate_error / (self.estimate_error + self.measurement_variance)
+
+        # 更新估计
+        self.estimate = self.estimate + kalman_gain * (measurement - self.estimate)
+
+        # 更新估计误差
+        self.estimate_error = (1 - kalman_gain) * self.estimate_error + abs(
+            self.estimate - self.estimate_error) * self.process_variance
+
+        return self.estimate
 
 def signal_filter(data_path):
     """
@@ -17,7 +43,7 @@ def signal_filter(data_path):
     :return:滤波后的信号
     """
     df = pd.read_csv(data_path)  # 读取信号
-    origin_signal = df.iloc[:, 1].values.astype(np.float32)
+    origin_signal = df.iloc[5:, 1].values.astype(np.float32)
     fs = 1 / 4e-5
     fmax = 110
     nyquist = fs / 2
@@ -26,20 +52,24 @@ def signal_filter(data_path):
 
     # 可视化
     plt.figure(figsize=(12, 8))
-    draw_signal(origin_signal, 2, 2, 1, "Raw Signal")
+    draw_signal(origin_signal, 2, 3, 1, "Raw Signal")
 
     # 中值滤波-去除尖峰
     signal.medfilt(origin_signal, kernel_size=5)
-    draw_signal(origin_signal, 2, 2, 2, "After 中值滤波")
+    draw_signal(origin_signal, 2, 3, 2, "After 中值滤波")
 
     # 高通滤波-去除运动伪影
     b, a = butter(4, cutoff_low, btype='high')
     filtfilt(b, a, origin_signal)
-    draw_signal(origin_signal, 2, 2, 3, "After 高通滤波")
+    draw_signal(origin_signal, 2, 3, 3, "After 高通滤波")
+
+    #  卡尔曼滤波
+    kf = KalmanFilter(process_variance=1e-5, measurement_variance=0.1, estimated_measurement_variance=1e-5)
+    draw_signal(origin_signal, 2, 3, 4, "After 卡尔曼滤波")
 
     # 低通滤波+降采样
     filtered = signal.decimate(origin_signal, int(fs // cutoff_high), ftype="iir")
-    draw_signal(filtered, 2, 2, 4, "After 低通滤波和降采样", dt=1 / cutoff_high)
+    draw_signal(filtered, 2, 3, 5, "After 低通滤波和降采样", dt=1 / cutoff_high)
 
     # 展示图象
     plt.tight_layout()
