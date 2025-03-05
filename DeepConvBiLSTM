@@ -1,0 +1,163 @@
+import os
+import numpy as np
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader, Dataset
+from sklearn.model_selection import train_test_split
+
+
+# Step 1: 从data_dir加载数据集
+def load_your_data(data_dir):
+    X = []
+    y = []
+    label = 0
+    for root, dirs, files in os.walk(data_dir):# data---move1---1.csv, 2.csv, 3.csv...
+        if root!= data_dir:
+            for file in files:
+                if file.endswith('.csv'):
+                    file_path = os.path.join(root, file)
+                    data = np.genfromtxt(file_path, delimiter=',')
+                    X.append(data)
+                    y.append(label)
+            label += 1
+    return np.array(X), np.array(y)
+
+
+# Step 2: 滑动窗口处理
+def create_sliding_windows(data, labels, window_size=20, step_size=5):
+    X, y = [], []
+    for i in range(len(data)):
+        single_data = data[i]
+        for j in range(0, len(single_data) - window_size, step_size):
+            X.append(single_data[j:j + window_size])
+            y.append(labels[i])
+    return np.array(X), np.array(y)
+
+
+# Step 3: 构建 PyTorch 数据集
+class IMUDataset(Dataset):
+    def __init__(self, X, y):
+        self.X = torch.tensor(X, dtype=torch.float32)
+        self.y = torch.tensor(y, dtype=torch.long)
+
+    def __len__(self):
+        return len(self.X)
+
+    def __getitem__(self, idx):
+        return self.X[idx], self.y[idx]
+
+
+# Step 4: 定义 DeepConvBiLSTM 模型
+class DeepConvBiLSTM(nn.Module):
+    def __init__(self, input_size=18, conv_filters=64, lstm_hidden=128, num_classes=10, num_lstm_layers=2, dropout=0.5):
+        super(DeepConvBiLSTM, self).__init__()
+        self.conv1 = nn.Conv1d(input_size, conv_filters, kernel_size=5, stride=1, padding=2)
+        self.conv2 = nn.Conv1d(conv_filters, conv_filters, kernel_size=5, stride=1, padding=2)
+        self.conv3 = nn.Conv1d(conv_filters, conv_filters, kernel_size=5, stride=1, padding=2)
+        self.conv4 = nn.Conv1d(conv_filters, conv_filters, kernel_size=5, stride=1, padding=2)
+        self.bn = nn.BatchNorm1d(conv_filters)
+        self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(dropout)
+        self.bilstm = nn.LSTM(input_size=conv_filters, hidden_size=lstm_hidden, num_layers=num_lstm_layers,
+                              batch_first=True, bidirectional=True, dropout=dropout)
+        self.fc = nn.Linear(lstm_hidden * 2, num_classes)
+
+    def forward(self, x):
+        x = x.permute(0, 2, 1)  # (batch, seq_len, features) -> (batch, features, seq_len)
+        x = self.relu(self.bn(self.conv1(x)))
+        x = self.relu(self.bn(self.conv2(x)))
+        x = self.relu(self.bn(self.conv3(x)))
+        x = self.relu(self.bn(self.conv4(x)))
+        x = x.permute(0, 2, 1)  # (batch, features, seq_len) -> (batch, seq_len, features)
+        x, _ = self.bilstm(x)
+        x = x[:, -1, :]
+        x = self.fc(self.dropout(x))
+        return x
+
+
+# Step 5: 训练模型
+def train_model(train_loader, model, criterion, optimizer, epoch):
+    model.train()
+    running_loss = 0.0
+    correct = 0
+    total = 0
+    for batch_X, batch_y in train_loader:
+        optimizer.zero_grad()
+        outputs = model(batch_X)
+        loss = criterion(outputs, batch_y)
+        loss.backward()
+        optimizer.step()
+
+        running_loss += loss.item()
+        _, predicted = torch.max(outputs, 1)
+        total += batch_y.size(0)
+        correct += (predicted == batch_y).sum().item()
+
+    train_loss = running_loss / len(train_loader)
+    train_acc = 100 * correct / total
+    print(f'Epoch [{epoch + 1}], Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.2f}%')
+    return train_loss, train_acc
+
+
+# Step 6: 测试模型
+def test_model(test_loader, model, criterion):
+    model.eval()
+    running_loss = 0.0
+    correct = 0
+    total = 0
+    with torch.no_grad():
+        for batch_X, batch_y in test_loader:
+            outputs = model(batch_X)
+            loss = criterion(outputs, batch_y)
+
+            running_loss += loss.item()
+            _, predicted = torch.max(outputs, 1)
+            total += batch_y.size(0)
+            correct += (predicted == batch_y).sum().item()
+
+    test_loss = running_loss / len(test_loader)
+    test_acc = 100 * correct / total
+    print(f'Test Loss: {test_loss:.4f}, Test Acc: {test_acc:.2f}%')
+    return test_loss, test_acc
+
+
+# Step 7: 主程序
+def main():
+    data_dir = '/data'  # data_dir 代表数据集所在目录，该目录下有子文件夹，每个子文件夹代表一个标签
+    X, y = load_your_data(data_dir)
+    X, y = create_sliding_windows(X, y)
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    train_dataset = IMUDataset(X_train, y_train)
+    test_dataset = IMUDataset(X_test, y_test)
+
+    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
+
+    model = DeepConvBiLSTM(num_classes=len(np.unique(y)))
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    num_epochs = 10
+
+    train_losses = []
+    train_accs = []
+    test_losses = []
+    test_accs = []
+
+    for epoch in range(num_epochs):
+        train_loss, train_acc = train_model(train_loader, model, criterion, optimizer, epoch)
+        test_loss, test_acc = test_model(test_loader, model, criterion)
+
+        train_losses.append(train_loss)
+        train_accs.append(train_acc)
+        test_losses.append(test_loss)
+        test_accs.append(test_acc)
+
+    torch.save(model.state_dict(), "deepconvlstm_your_data.pth")
+    print("Model saved!")
+
+
+if __name__ == "__main__":
+    main()
