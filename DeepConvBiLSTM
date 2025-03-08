@@ -5,31 +5,48 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
 
-
-# Step 1: 从data_dir加载数据集
+# Step 1: 加载数据集
 def load_your_data(data_dir):
     X = []
     y = []
-    label = 0
-    for root, dirs, files in os.walk(data_dir):# data---move1---1.csv, 2.csv, 3.csv...
-        if root!= data_dir:
-            for file in files:
+    original_lengths = []  # 新增：记录每个样本的原始长度
+    label_map = {folder: idx for idx, folder in enumerate(os.listdir(data_dir))}
+
+    for folder in os.listdir(data_dir):
+        folder_path = os.path.join(data_dir, folder)
+        if os.path.isdir(folder_path):
+            label = label_map[folder]
+            for file in os.listdir(folder_path):
                 if file.endswith('.csv'):
-                    file_path = os.path.join(root, file)
-                    data = np.genfromtxt(file_path, delimiter=',')
+                    file_path = os.path.join(folder_path, file)
+                    data = np.genfromtxt(file_path, delimiter=',', skip_header=1)[:, 1:22]
+                    original_length = len(data)  # 记录原始长度
+                    original_lengths.append(original_length)
                     X.append(data)
                     y.append(label)
-            label += 1
-    return np.array(X), np.array(y)
+
+    max_length = max(original_lengths)
+    X_padded = [np.pad(sample, ((0, max_length - len(sample)), (0, 0)), mode='constant') for sample in X]
+    X_padded = np.array(X_padded, dtype=np.float32)
+    y = np.array(y, dtype=np.int64)
+
+    print(f"数据加载完成，X 共有 {len(X_padded)} 个样本，最大长度 {max_length}，每个样本形状 {X_padded.shape[1:]}")
+    print(f"标签映射: {label_map}")  # 输出标签对应关系
+
+    return X_padded, y, original_lengths
+
 
 
 # Step 2: 滑动窗口处理
-def create_sliding_windows(data, labels, window_size=20, step_size=5):
+def create_sliding_windows(data, labels, original_lengths, window_size=20, step_size=5):
     X, y = [], []
     for i in range(len(data)):
         single_data = data[i]
-        for j in range(0, len(single_data) - window_size, step_size):
+        original_length = original_lengths[i]  # 获取该样本的原始长度
+        # 仅对原始数据部分生成窗口（忽略填充的0）
+        for j in range(0, original_length - window_size, step_size):
             X.append(single_data[j:j + window_size])
             y.append(labels[i])
     return np.array(X), np.array(y)
@@ -50,7 +67,7 @@ class IMUDataset(Dataset):
 
 # Step 4: 定义 DeepConvBiLSTM 模型
 class DeepConvBiLSTM(nn.Module):
-    def __init__(self, input_size=18, conv_filters=64, lstm_hidden=128, num_classes=10, num_lstm_layers=2, dropout=0.5):
+    def __init__(self, input_size=21, conv_filters=64, lstm_hidden=128, num_classes=10, num_lstm_layers=2, dropout=0.5):
         super(DeepConvBiLSTM, self).__init__()
         self.conv1 = nn.Conv1d(input_size, conv_filters, kernel_size=5, stride=1, padding=2)
         self.conv2 = nn.Conv1d(conv_filters, conv_filters, kernel_size=5, stride=1, padding=2)
@@ -123,40 +140,87 @@ def test_model(test_loader, model, criterion):
 
 
 # Step 7: 主程序
+
 def main():
-    data_dir = '/data'  # data_dir 代表数据集所在目录，该目录下有子文件夹，每个子文件夹代表一个标签
-    X, y = load_your_data(data_dir)
-    X, y = create_sliding_windows(X, y)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    data_dir = 'D:\大二下\互联网加\位置传感器\\data'
+    X_original, y_original, original_lengths = load_your_data(data_dir)
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    # 划分原始样本
+    X_train_original, X_test_original, y_train_original, y_test_original = train_test_split(
+        X_original, y_original, test_size=0.2, stratify=y_original, random_state=42
+    )
+    train_indices, test_indices = train_test_split(
+        np.arange(len(X_original)), test_size=0.2, stratify=y_original, random_state=42
+    )
 
-    train_dataset = IMUDataset(X_train, y_train)
-    test_dataset = IMUDataset(X_test, y_test)
+    # 生成窗口时使用原始长度（需从load_your_data返回original_lengths）
+    # 注意：此处需要传递训练集和测试集对应的original_lengths
+    # 假设 original_lengths 是完整数据集的长度列表，需同步划分
+    original_lengths_train = [original_lengths[i] for i in range(len(X_original)) if i in train_indices]
+    original_lengths_test = [original_lengths[i] for i in range(len(X_original)) if i in test_indices]
+
+    X_train, y_train = create_sliding_windows(X_train_original, y_train_original, original_lengths_train)
+    X_test, y_test = create_sliding_windows(X_test_original, y_test_original, original_lengths_test)
+
+    # 归一化处理（关键修改点：先归一化再创建数据集）
+    scaler = StandardScaler()
+    # 训练集归一化
+    num_train_samples, window_size, num_features = X_train.shape
+    X_train_reshaped = X_train.reshape(-1, num_features)
+    scaler.fit(X_train_reshaped)
+    X_train_normalized = scaler.transform(X_train_reshaped).reshape(num_train_samples, window_size, num_features)
+
+    # 测试集归一化
+    num_test_samples, _, _ = X_test.shape
+    X_test_reshaped = X_test.reshape(-1, num_features)
+    X_test_normalized = scaler.transform(X_test_reshaped).reshape(num_test_samples, window_size, num_features)
+
+    # 创建归一化后的数据集
+    train_dataset = IMUDataset(X_train_normalized, y_train)  # 使用归一化后的数据
+    test_dataset = IMUDataset(X_test_normalized, y_test)
 
     train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
 
-    model = DeepConvBiLSTM(num_classes=len(np.unique(y)))
-    criterion = nn.CrossEntropyLoss()
+    model = DeepConvBiLSTM(num_classes=len(np.unique(y_train))).to(device)
     optimizer = optim.Adam(model.parameters(), lr=0.001)
-    num_epochs = 10
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5, verbose=True)
+    criterion = nn.CrossEntropyLoss()
 
-    train_losses = []
-    train_accs = []
-    test_losses = []
-    test_accs = []
+    for epoch in range(20):
+        model.train()
+        running_loss, correct, total = 0.0, 0, 0
+        for inputs, labels in train_loader:
+            inputs, labels = inputs.to(device), labels.to(device)
+            optimizer.zero_grad()
+            outputs = model(inputs)
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
+            running_loss += loss.item()
+            correct += (outputs.argmax(1) == labels).sum().item()
+            total += labels.size(0)
 
-    for epoch in range(num_epochs):
-        train_loss, train_acc = train_model(train_loader, model, criterion, optimizer, epoch)
-        test_loss, test_acc = test_model(test_loader, model, criterion)
+        train_loss, train_acc = running_loss / len(train_loader), 100 * correct / total
+        print(f"Epoch {epoch + 1}: Train Loss={train_loss:.4f}, Train Acc={train_acc:.2f}%")
+        scheduler.step(train_loss)
 
-        train_losses.append(train_loss)
-        train_accs.append(train_acc)
-        test_losses.append(test_loss)
-        test_accs.append(test_acc)
+        # 测试集评估
+        model.eval()
+        correct, total, test_loss = 0, 0, 0.0
+        with torch.no_grad():
+            for inputs, labels in test_loader:
+                inputs, labels = inputs.to(device), labels.to(device)
+                outputs = model(inputs)
+                test_loss += criterion(outputs, labels).item()
+                correct += (outputs.argmax(1) == labels).sum().item()
+                total += labels.size(0)
+        test_loss, test_acc = test_loss / len(test_loader), 100 * correct / total
+        print(f"Test Loss={test_loss:.4f}, Test Acc={test_acc:.2f}%")
 
-    torch.save(model.state_dict(), "deepconvlstm_your_data.pth")
-    print("Model saved!")
+    torch.save(model.state_dict(), f"D:\\大二下\\互联网加\\位置传感器\\log\\params_epoch_{epoch + 1}.pth")
+    print(f"Model saved for epoch {epoch + 1}!")
 
 
 if __name__ == "__main__":
