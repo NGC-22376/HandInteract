@@ -15,8 +15,6 @@ root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 # 将根目录添加到 sys.path
 sys.path.append(root_dir)
 
-# 现在可以导入 utils 中的内容
-
 
 
 #from HandInteract.utils.dataset_construction import pdf_construct_dataset, format_folders
