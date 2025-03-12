@@ -1,145 +1,164 @@
 import os
 
-import matplotlib.pyplot as plt
 import numpy as np
+import matplotlib.pyplot as plt
 import pandas as pd
-import pywt
-from scipy import signal
-from scipy.signal import butter, filtfilt
+from scipy.signal import butter, filtfilt, decimate, firwin, lfilter
 
-from utils.visualization import draw_signal, print_msg
+# 生成模拟数据（假设4通道，每个通道10秒数据）
+fs_original = 25000  # 原始采样率
+dataset_plot_path = r"D:\download\feishu_download\dataset_3.4可视化"
+dataset_path = r"D:\download\feishu_download\dataset_3.4"
+# 参数设置
+target_fs = 100  # 目标采样率（降采样后）
+nyquist_original = fs_original / 2
+nyquist_new = target_fs / 2
+# 设计低通滤波器（示例参数）
+lp_cutoff = 10.0
+order_lowpass = 4
 
-class KalmanFilter:
-    def __init__(self, process_variance, measurement_variance, estimated_measurement_variance):
-        # 过程噪声方差
-        self.process_variance = process_variance
-        # 测量噪声方差
-        self.measurement_variance = measurement_variance
-        # 估计测量误差方差
-        self.estimated_measurement_variance = estimated_measurement_variance
 
-        # 初始估计值
-        self.estimate = 0
-        # 初始误差估计
-        self.estimate_error = 1
+def factorize(n, max_stage):
+    factors = []
+    while n > 1:
+        found = False
+        # 从最大值向小寻找可分解因子
+        for f in range(min(max_stage, n), 1, -1):
+            if n % f == 0:
+                factors.append(f)
+                n = n // f
+                found = True
+                break
+        if not found:  # 无法分解时取剩余值
+            factors.append(n)
+            break
+    return factors
+# 步骤1：抗混叠滤波 + 降采样
+# -----------------------------------------------
+def downsample(data, original_fs, target_fs):
+    """降采样函数"""
+    total_factor = int(original_fs // target_fs)
+    print(f'降采样倍数: {total_factor}')
 
-    def update(self, measurement):
-        # 卡尔曼增益
-        kalman_gain = self.estimate_error / (self.estimate_error + self.measurement_variance)
+    # 分解因子（确保乘积等于总降采样倍数）
+    factors = factorize(total_factor, max_stage=10)
+    print(f"总降采样倍数: {total_factor} → 分阶段倍数: {factors}")
 
-        # 更新估计
-        self.estimate = self.estimate + kalman_gain * (measurement - self.estimate)
+    # ========== 分阶段降采样 ==========
+    downsampled = data.copy()
+    for idx, f in enumerate(factors, 1):
+        required_len = 30  # decimate最小需求长度
+        if len(downsampled) < required_len:
+            raise ValueError(
+                f"第{idx}阶段降采样前数据长度不足({len(downsampled)} < {required_len})"
+                f"，请检查数据长度或调整分阶段策略"
+            )
+        safety_margin=5
+        # 动态调整滤波器阶数
+        filter_order = min(8, int(len(downsampled) / f - safety_margin))
+        downsampled = decimate(
+            downsampled,
+            f,
+            n=filter_order,  # 自动调整阶数
+            zero_phase=True
+        )
 
-        # 更新估计误差
-        self.estimate_error = (1 - kalman_gain) * self.estimate_error + abs(
-            self.estimate - self.estimate_error) * self.process_variance
+    return downsampled
 
-        return self.estimate
 
-def signal_filter(data_path):
-    """
-    中值滤波->高通滤波->低通滤波->降采样
-    :param data_path:存储原始信号的文件路径
-    :return:滤波后的信号
-    """
-    df = pd.read_csv(data_path)  # 读取信号
-    origin_signal = df.iloc[5:, 1].values.astype(np.float32)
-    fs = 1 / 4e-5
-    fmax = 110
-    nyquist = fs / 2
-    cutoff_high = 2.5 * fmax / 2  # 低频滤波截止频率，要求大于最高频的奈奎斯特频率
-    cutoff_low = 1 / nyquist  # 标准化高通滤波截止频率
+# 步骤2：带通滤波（0.1-10Hz）
+# -----------------------------------------------
+def butter_bandpass(lowcut, highcut, fs, order=6):
+    """生成带通滤波器系数"""
+    nyq = 0.5 * fs
+    low = lowcut / nyq
+    high = highcut / nyq
+    b, a = butter(order, [low, high], btype='band')
+    return b, a
 
-    # 可视化
+
+def apply_filter(data, filter_func, fs):
+    """应用零相位滤波器"""
+    b, a = filter_func
+    return filtfilt(b, a, data)
+
+
+# 步骤3：可选的低通滤波（如果只需要<10Hz）
+# -----------------------------------------------
+def butter_lowpass(cutoff, fs, order=5):
+    """生成低通滤波器系数"""
+    nyq = 0.5 * fs
+    normal_cutoff = cutoff / nyq
+    b, a = butter(order, normal_cutoff, btype='low')
+    return b, a
+
+
+# 可视化结果
+# -----------------------------------------------
+def plot_comparison(original, filtered, fs_orig, fs_new, show, plot_path):
+    """绘制原始和滤波后信号对比"""
+    t_orig = np.arange(original.shape[0]) / fs_orig
+    t_new = np.arange(filtered.shape[0]) / fs_new
+
     plt.figure(figsize=(12, 8))
-    draw_signal(origin_signal, 2, 3, 1, "Raw Signal")
 
-    # 中值滤波-去除尖峰
-    signal.medfilt(origin_signal, kernel_size=5)
-    draw_signal(origin_signal, 2, 3, 2, "After 中值滤波")
+    # 时域对比
+    plt.subplot(2, 1, 1)
+    plt.plot(t_orig, original[:], alpha=0.5, label='Original')
+    plt.plot(t_new, filtered[:], label='Filtered')
+    plt.xlim(0, 3.5)  # 显示前2秒
+    plt.xlabel('Time (s)')
+    plt.legend()
 
-    # 高通滤波-去除运动伪影
-    b, a = butter(4, cutoff_low, btype='high')
-    filtfilt(b, a, origin_signal)
-    draw_signal(origin_signal, 2, 3, 3, "After 高通滤波")
-
-    #  卡尔曼滤波
-    kf = KalmanFilter(process_variance=1e-5, measurement_variance=0.1, estimated_measurement_variance=1e-5)
-    draw_signal(origin_signal, 2, 3, 4, "After 卡尔曼滤波")
-
-    # 低通滤波+降采样
-    filtered = signal.decimate(origin_signal, int(fs // cutoff_high), ftype="iir")
-    draw_signal(filtered, 2, 3, 5, "After 低通滤波和降采样", dt=1 / cutoff_high)
-
-    # 展示图象
+    # 频域对比
+    plt.subplot(2, 1, 2)
+    n_fft = 4096
+    f_orig = np.fft.rfftfreq(n_fft, 1 / fs_orig)
+    f_new = np.fft.rfftfreq(n_fft, 1 / fs_new)
+    plt.plot(f_orig, np.abs(np.fft.rfft(original[ :n_fft], n_fft)),
+             alpha=0.5, label='Original', color='blue', linestyle='--')
+    # 滤波后信号频谱
+    plt.plot(f_new, np.abs(np.fft.rfft(filtered[:n_fft], n_fft)),
+             label='Filtered', color='red', linewidth=1.5)
+    plt.xlim(0, 50)  # 显示0-50Hz范围
+    plt.title('Frequency Spectrum')
+    plt.xlabel('Frequency (Hz)')
+    plt.legend()
     plt.tight_layout()
-    plt.show()
-    return filtered
+    plt.savefig(plot_path)
+
+    if show:
+        plt.show()
+
+def signal_filter(origin_signal):
+    #输入（信号长度，通道数）的原始信号，输出（信号长度,通道数）的过滤且降采样信号
+    data_filtered=[]
+    for channel in range(n_channels):
+        raw_data_relate = origin_signal[:,channel] - np.mean(origin_signal[:,channel])
+        # 设计抗混叠滤波器（Butterworth低通滤波器，截止频率为nyquist_new）
+        num_taps = 101
+        fir_coeff = firwin(num_taps, nyquist_new, fs=fs_original, pass_zero="lowpass")
+        data_pre = filtfilt(fir_coeff, 1.0, raw_data_relate)
+        data_downsampled = np.array(downsample(data_pre, fs_original, target_fs))
+
+        b_low, a_low = butter_lowpass(lp_cutoff, target_fs, order_lowpass)
+        data_filtered_channel = np.array(apply_filter(data_downsampled, (b_low, a_low), target_fs))
+        # raw_data_repeat4为（36329,4）data_filtered
+        data_filtered.append(data_filtered_channel.reshape(-1, 1))
+    return np.hstack(data_filtered)
 
 
-def cwt(data_path, img_dir):
-    """
-    使用小波变换，分析信号序列的频率构成
-    :param data_path: 数据文件路径
-    :param img_dir: 小波变换图象的存储路径文件夹
-    :return:
-    """
-    # 定义采样频率
-    dt = 4e-5
-    fs = 1 / dt
-
-    # 获取原始数据
-    type_name = os.path.basename(os.path.dirname(data_path))
-    df = pd.read_csv(data_path, header=None, skiprows=4)
-    fmg_signal = df.iloc[:, 1].values.astype(np.float32)
-    t = np.arange(0, len(fmg_signal) * dt, dt)
-
-    # 使用Morlet小波
-    wavelet = "morl"
-    center_freq = pywt.central_frequency(wavelet)  # Morlet小波中心频率=0.8125
-
-    # 计算尺度范围，得到50个在对数域上均匀分布的尺度值，即最终的结果对低频更敏感
-    print_msg(f"开始小波变换：{type_name}")
-    scales = np.logspace(np.log10(center_freq * fs / 100), np.log10(center_freq * fs / 0.1), num=50)
-    coefficients, frequencies = pywt.cwt(fmg_signal, scales, wavelet, sampling_period=1 / fs)
-
-    # 提取不同频段的子集。布尔掩码列表，按位判断frequencies中的每个值满足条件与否，再按位将两个掩码表做&运算
-    mask_to1 = (frequencies >= 0.1) & (frequencies <= 1)
-    mask_to10 = (frequencies > 1) & (frequencies <= 10)
-    mask_to50 = (frequencies > 10) & (frequencies <= 50)
-    mask_to100 = (frequencies > 50) & (frequencies <= 100)
-    mask_over100 = frequencies > 100
-
-    # 绘图展示
-    plt.figure(figsize=(15, 10))
-
-    # 原始图像
-    draw_signal(fmg_signal, 3, 2, 1, "Raw Signal " + type_name)
-
-    # 小波时频图
-    def draw_after_transform(pos, coefficients, frequencies, levels, begin, end):
-        plt.subplot(pos)
-        plt.contourf(t, frequencies, np.abs(coefficients), levels=levels, cmap="jet")
-        plt.title(f"After Transform:{begin}Hz-{end}Hz")
-        plt.xlabel("Time/s")
-        plt.ylabel("Frequency/Hz")
-        plt.ylim(begin, end)
-        plt.colorbar(label='Coefficient Magnitude')
-
-    # 保证打印非空频率
-    if np.any(mask_to1):
-        draw_after_transform(323, coefficients[mask_to1], frequencies[mask_to1], 20, 0.1, 1)
-    if np.any(mask_to10):
-        draw_after_transform(324, coefficients[mask_to10], frequencies[mask_to10], 20, 1, 10)
-    if np.any(mask_to50):
-        draw_after_transform(325, coefficients[mask_to50], frequencies[mask_to50], 80, 10, 50)
-    if np.any(mask_to100):
-        draw_after_transform(326, coefficients[mask_to100], frequencies[mask_to100], 100, 50, 100)
-    if np.any(mask_over100):
-        print(f"最高频率：{frequencies[mask_over100]}")
-
-    plt.tight_layout()
-
-    # 保存并显示图象
-    plt.savefig(os.path.join(img_dir, type_name + os.path.basename(data_path) + ".png"))
-    plt.show()
+categories = os.listdir(dataset_path)
+n_channels = 1  # 考虑输入为4通道信号，即origin_signal形状为（信号长度，4）
+'''
+for idx, category in enumerate(categories):
+    path = os.path.join(dataset_path, category)
+    for file_name in os.listdir(path):
+        file = os.path.join(dataset_path, category, file_name)
+        df = pd.read_csv(file)  # 读取信号
+        origin_signal = df.iloc[:, 1:n_channels + 1].values.astype(np.float32)  # (86329,)
+        filtered = signal_filter(origin_signal)
+        for channel in range(n_channels):
+            plot_path = os.path.join(dataset_plot_path + category + os.path.basename(file_name) + f"_{channel}通道.png")
+            plot_comparison(origin_signal[:,channel], filtered[:,channel], fs_original, target_fs,0,plot_path)
+'''
