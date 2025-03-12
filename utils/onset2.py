@@ -492,14 +492,7 @@ def data_processing(dataset_path, is_cwt,sampling_rate,show):
                           show=show,
                           smooth=smooth_fragment)
 
-            # 生成输出路径
-            os.makedirs(os.path.join(output_dir, category), exist_ok=True)
-
-            output_path = os.path.join(output_dir, category,f'4.0.csv')
-            # 保存片段
-
-            pd.DataFrame(fragment).to_csv(output_path, index=False, header=False)
-            print(f"已保存文件：{file_name}")
+            
 
             os.makedirs(os.path.join(dataplt_dir, category), exist_ok=True)
 
