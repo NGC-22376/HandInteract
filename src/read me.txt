@@ -1,0 +1,3 @@
+semgA(B)newbest_model_S0.pth是用semg训练模型得到的参数
+其中A代表通道数，需要在slipping_window里面修改相关数据最后一维；
+B代表pool1最大池化参数，(2,1)表示self.pool1 = nn.MaxPool2d((2,1))
