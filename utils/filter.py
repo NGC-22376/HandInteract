@@ -7,8 +7,8 @@ from scipy.signal import butter, filtfilt, decimate, firwin, lfilter
 
 # 生成模拟数据（假设4通道，每个通道10秒数据）
 fs_original = 25000  # 原始采样率
-dataset_plot_path = r"D:\download\feishu_download\dataset_3.4可视化"
-dataset_path = r"D:\download\feishu_download\dataset_3.4"
+dataset_plot_path = r"E:\UESTC\手互\output"
+dataset_path = r"E:\UESTC\手互\output"
 # 参数设置
 target_fs = 100  # 目标采样率（降采样后）
 nyquist_original = fs_original / 2
@@ -150,7 +150,7 @@ def signal_filter(origin_signal):
 
 categories = os.listdir(dataset_path)
 n_channels = 1  # 考虑输入为4通道信号，即origin_signal形状为（信号长度，4）
-'''
+
 for idx, category in enumerate(categories):
     path = os.path.join(dataset_path, category)
     for file_name in os.listdir(path):
@@ -161,4 +161,4 @@ for idx, category in enumerate(categories):
         for channel in range(n_channels):
             plot_path = os.path.join(dataset_plot_path + category + os.path.basename(file_name) + f"_{channel}通道.png")
             plot_comparison(origin_signal[:,channel], filtered[:,channel], fs_original, target_fs,0,plot_path)
-'''
+
