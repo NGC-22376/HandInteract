@@ -1,0 +1,1 @@
+openvoice/checkpoints_v2/converter/checkpoint.pth filter=lfs diff=lfs merge=lfs -text
