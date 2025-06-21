@@ -1,5 +1,5 @@
+import json
 import os
-
 import pandas as pd
 from nptdms import TdmsFile
 
@@ -39,3 +39,9 @@ def into_csv(ori_dir_path, csv_dir_path, channel_num=4, dt=4e-5, delete_ori=Fals
             if delete_ori:
                 os.remove(file)
                 os.remove(os.path.splitext(file)[0] + '.tdms_index')
+
+if "__main__" == __name__:
+    path = os.path.join(os.path.expanduser("~"), "Documents", "tdms.json")
+    with open(path, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+    into_csv(data["tdms_dir"], data["csv_dir"], channel_num=4, dt=4e-5, delete_ori=True)
