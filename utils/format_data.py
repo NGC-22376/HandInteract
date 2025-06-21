@@ -2,7 +2,7 @@ import os
 
 import numpy as np
 
-from utils.filter import signal_filter
+from oldModel.utils.filter import signal_filter
 from utils.visualization import plot_and_save_csv
 
 dataset_path = r"C:\Users\30744\Desktop\手互\Dataset-2"  # 数据集路径
