@@ -1,4 +1,7 @@
 import time
+from pynput import keyboard
+import threading
+import time
 import hashlib
 import base64
 import json
@@ -9,6 +12,17 @@ import urllib.parse
 from email.utils import formatdate
 import hmac
 import ssl
+import keyboard  # 新增：用于监听按键
+from pynput import keyboard
+
+data_remain = []
+flag = 1  # 是否为连接上的第一组数据
+sock = None
+mac = None
+is_recording = False
+recognizer = None
+recording_thread = None
+is_pressed = False
 
 # ===== 讯飞API参数 =====
 APPID = "f765a2b2"
@@ -22,11 +36,13 @@ CHUNK = 512
 FORMAT = pyaudio.paInt16
 CHANNELS = 1
 
+
 # ===== 鉴权URL生成 =====
 def create_url():
     date = formatdate(usegmt=True)
     signature_origin = f"host: {HOST}\ndate: {date}\nGET {ENDPOINT} HTTP/1.1"
-    signature_sha = hmac.new(APISecret.encode("utf-8"), signature_origin.encode("utf-8"), digestmod=hashlib.sha256).digest()
+    signature_sha = hmac.new(APISecret.encode("utf-8"), signature_origin.encode("utf-8"),
+                             digestmod=hashlib.sha256).digest()
     signature = base64.b64encode(signature_sha).decode("utf-8")
 
     authorization_origin = f'api_key="{APIKey}", algorithm="hmac-sha256", headers="host date request-line", signature="{signature}"'
@@ -35,17 +51,15 @@ def create_url():
     params = {"authorization": authorization, "date": date, "host": HOST}
     return f"wss://{HOST}{ENDPOINT}?" + urllib.parse.urlencode(params)
 
-# ===== 语音识别类 =====
+
 class XFRecognizer:
     def __init__(self):
         self.ws = None
         self.status = 0
         self.stop_signal = threading.Event()
         self.ws_ready = threading.Event()
-        self.result = None
-        
 
-    def on_message(self, ws, message):
+    def on_message(self, ws, message, send_queue):
         data = json.loads(message)
         if data.get("code") != 0:
             print("识别错误:", data.get("message"))
@@ -53,8 +67,9 @@ class XFRecognizer:
             result = data['data']['result']
             if 'ws' in result:
                 text = ''.join([w['cw'][0]['w'] for w in result['ws']])
-                self.result = text
                 print("[识别结果]", text)
+                # 将识别结果放入发送队列
+                send_queue.put(text)
 
     def on_error(self, ws, error):
         print("WebSocket错误:", error)
@@ -66,9 +81,9 @@ class XFRecognizer:
         def run():
             p = pyaudio.PyAudio()
             stream = p.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK)
-            print("开始讲话，松开 space 结束：")
+            print("开始讲话，松开音量键结束：")
 
-            self.ws_ready.set()  # 告诉外部“WebSocket已准备好”
+            self.ws_ready.set()  # ✅ 告诉外部“WebSocket已准备好”
 
             try:
                 while not self.stop_signal.is_set():
@@ -113,8 +128,6 @@ class XFRecognizer:
                 p.terminate()
                 ws.close()
 
-
-
         threading.Thread(target=run).start()
 
     def start(self):
@@ -132,87 +145,43 @@ class XFRecognizer:
         threading.Thread(target=lambda: self.ws.run_forever(sslopt={"cert_reqs": ssl.CERT_NONE})).start()
 
         if self.ws_ready.wait(timeout=5):
-            return True  #  表示准备完成
+            return True  # ✅ 表示准备完成
         else:
             print("WebSocket连接超时！")
             return False
 
 
-import tkinter as tk
-from tkinter import simpledialog, messagebox
+def toggle_recording(send_queue):
+    global is_recording, recording_thread, recognizer
 
-def get_input_window(title="输入框", prompt="请输入内容："):
-    """
-    弹出输入窗口，返回用户输入的内容
+    if not is_recording:
+        recognizer = XFRecognizer(send_queue)
+        recording_thread = threading.Thread(target=recognizer.start)
+        recording_thread.start()
+        time.sleep(0.1)  # 给线程一点时间启动
 
-    参数:
-        title: 窗口标题
-        prompt: 输入提示文字
-    返回:
-        用户输入的字符串（确认）或None（取消/关闭窗口）
-    """
-    # 创建主窗口
-    root = tk.Tk()
-    root.title(title)
-    root.geometry("400x150")  # 窗口大小：宽400，高150
-    root.resizable(False, False)  # 禁止调整窗口大小
+        # 等待 WebSocket 准备好再提示讲话
+        if recognizer.ws_ready.wait(timeout=5):
+            print("【开始录音】请讲话...")
+            is_recording = True
+        else:
+            print("连接失败，无法开始录音。")
+    else:
+        print("【录音结束】正在识别...")
+        is_recording = False
+        if recognizer:
+            recognizer.stop_signal.set()
 
-    # 居中显示窗口
-    root.update_idletasks()
-    width = root.winfo_width()
-    height = root.winfo_height()
-    x = (root.winfo_screenwidth() // 2) - (width // 2)
-    y = (root.winfo_screenheight() // 2) - (height // 2)
-    root.geometry('{}x{}+{}+{}'.format(width, height, x, y))
 
-    # 存储输入结果的变量
-    input_result = None
+def on_press(key, send_queue):
+    if key == keyboard.Key.media_volume_up:  # 这里有点类似于直接连电脑的音量键了，所以可能不用再显式连接按钮的蓝牙
+        print("🎯 蓝牙按钮按下（音量加）")
+        toggle_recording(send_queue)
 
-    # 输入提示标签
-    prompt_label = tk.Label(root, text=prompt, font=("SimHei", 10))
-    prompt_label.pack(pady=10)
 
-    # 输入框
-    input_entry = tk.Entry(root, width=40, font=("SimHei", 12))
-    input_entry.pack(pady=5)
-    input_entry.focus_set()  # 自动聚焦到输入框
-
-    # 确认按钮回调函数
-    def on_confirm():
-        nonlocal input_result
-        input_result = input_entry.get().strip()  # 获取输入并去除首尾空格
-        root.destroy()  # 关闭窗口
-
-    # 取消按钮回调函数
-    def on_cancel():
-        root.destroy()
-
-    # 按钮区域
-    button_frame = tk.Frame(root)
-    button_frame.pack(pady=10)
-
-    confirm_btn = tk.Button(
-        button_frame,
-        text="确认",
-        command=on_confirm,
-        width=10,
-        font=("SimHei", 10)
-    )
-    confirm_btn.grid(row=0, column=0, padx=10)
-
-    cancel_btn = tk.Button(
-        button_frame,
-        text="取消",
-        command=on_cancel,
-        width=10,
-        font=("SimHei", 10)
-    )
-    cancel_btn.grid(row=0, column=1, padx=10)
-
-    # 绑定回车键触发确认
-    root.bind('<Return>', lambda event: on_confirm())
-
-    # 显示窗口并等待关闭
-    root.mainloop()
-
-    return input_result
+def voice_to_text(microphone_mac, send_queue):
+    print("线程启动")
+    print("按 Space 开始/停止录音，按 ESC 退出")
+    with keyboard.Listener(send_queue, on_press=on_press) as listener:
+        listener.join()
+    print("程序已退出")
