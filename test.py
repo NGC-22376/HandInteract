@@ -2,6 +2,7 @@ import time
 from datetime import datetime
 from utils.show.blue_connection import *
 from utils.show.data_process import *
+from utils.show.voice_to_text import voice_to_text
 import threading
 
 # 设备MAC地址
@@ -33,7 +34,7 @@ def receive():
 def send():
     global bt
     while 1:
-        msg = input("请输入要发送的信息：")
+        msg = voice_to_text()
         bt.send_msg(msg)
 
 
