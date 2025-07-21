@@ -25,9 +25,11 @@ recording_thread = None
 is_pressed = False
 
 # ===== 讯飞API参数 =====
-APPID = "f765a2b2"
-APIKey = "41a1eb407970fe0af8aae2507dcf4cb3"
-APISecret = "MTFkMWRmMTFmYWIwNmM2ZjMxZmU2OGNk"
+# 25-07-21更新API接口参数
+APPID = "7775e229"
+APIKey = "e105b98b2255d823d37b1ad5548e4f0e"
+APISecret = "OWUxYjk5ZWU2YzFiZTliNGJmZDljYmVj"
+
 HOST = "ws-api.xfyun.cn"
 ENDPOINT = "/v2/iat"
 # 音频参数
