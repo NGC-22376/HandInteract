@@ -1,4 +1,4 @@
-#30条数据的时候79%，10条的时候78.30%!
+#30条数据的时候81%，10条的时候78.30%!
 import os
 import numpy as np
 import torch
@@ -318,7 +318,7 @@ def train():
                                    f"\\output\\imu_model2.pth")
             print(f"Best model updated and saved at epoch {epoch + 1} with acc {test_acc:.2f}%!")
 
-def eval(csv_dir):# 测试集评估
+def evl(csv_dir):# 测试集评估
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     seq_len = 20
 
