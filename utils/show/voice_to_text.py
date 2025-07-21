@@ -136,3 +136,83 @@ class XFRecognizer:
         else:
             print("WebSocket连接超时！")
             return False
+
+
+import tkinter as tk
+from tkinter import simpledialog, messagebox
+
+def get_input_window(title="输入框", prompt="请输入内容："):
+    """
+    弹出输入窗口，返回用户输入的内容
+
+    参数:
+        title: 窗口标题
+        prompt: 输入提示文字
+    返回:
+        用户输入的字符串（确认）或None（取消/关闭窗口）
+    """
+    # 创建主窗口
+    root = tk.Tk()
+    root.title(title)
+    root.geometry("400x150")  # 窗口大小：宽400，高150
+    root.resizable(False, False)  # 禁止调整窗口大小
+
+    # 居中显示窗口
+    root.update_idletasks()
+    width = root.winfo_width()
+    height = root.winfo_height()
+    x = (root.winfo_screenwidth() // 2) - (width // 2)
+    y = (root.winfo_screenheight() // 2) - (height // 2)
+    root.geometry('{}x{}+{}+{}'.format(width, height, x, y))
+
+    # 存储输入结果的变量
+    input_result = None
+
+    # 输入提示标签
+    prompt_label = tk.Label(root, text=prompt, font=("SimHei", 10))
+    prompt_label.pack(pady=10)
+
+    # 输入框
+    input_entry = tk.Entry(root, width=40, font=("SimHei", 12))
+    input_entry.pack(pady=5)
+    input_entry.focus_set()  # 自动聚焦到输入框
+
+    # 确认按钮回调函数
+    def on_confirm():
+        nonlocal input_result
+        input_result = input_entry.get().strip()  # 获取输入并去除首尾空格
+        root.destroy()  # 关闭窗口
+
+    # 取消按钮回调函数
+    def on_cancel():
+        root.destroy()
+
+    # 按钮区域
+    button_frame = tk.Frame(root)
+    button_frame.pack(pady=10)
+
+    confirm_btn = tk.Button(
+        button_frame,
+        text="确认",
+        command=on_confirm,
+        width=10,
+        font=("SimHei", 10)
+    )
+    confirm_btn.grid(row=0, column=0, padx=10)
+
+    cancel_btn = tk.Button(
+        button_frame,
+        text="取消",
+        command=on_cancel,
+        width=10,
+        font=("SimHei", 10)
+    )
+    cancel_btn.grid(row=0, column=1, padx=10)
+
+    # 绑定回车键触发确认
+    root.bind('<Return>', lambda event: on_confirm())
+
+    # 显示窗口并等待关闭
+    root.mainloop()
+
+    return input_result

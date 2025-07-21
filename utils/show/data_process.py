@@ -1,121 +1,92 @@
-def to_decimal(hex_num):
-    return int.from_bytes(hex_num, byteorder='big')
+import os
+
+import numpy as np
+import pandas as pd
 
 
-def parse_raw_data(raw_data, data_remain):
-    results = [] # 存放结果的列表
+def parse_raw_data(raw_data, datas):
+    """处理从IMU传来的数据"""
+    results = []
     error_message = []
 
-    # 提取十六进制数据
-    # 查看上一组的剩余数据
-    if data_remain:# 有剩余数据 
-        # 检查数据长度是否正确，每组数据应为两位的16进制数
-        data_in_part = data_remain.copy()
-        data_remain=[]
-    else:
-        data_in_part = []
-    # 添加目前的数据
-    data_in_part = [raw_data[i:i+2] for i in range(0, len(raw_data), 2)]
-    # 将不成组的数据放进data_remain里面
-    if len(data_in_part) % 36 != 0:
-        data_remain = data_in_part[(36 * (len(data_in_part) // 36)):]
-
     # 处理当前波次的数据
-    # 按每36组划分数据
-    for i in range(0, len(data_in_part), 36):
-        chunk = data_in_part[i:i + 36]
+    # 截断
+    A = raw_data[0:14]
+    W = raw_data[12:24]
+    B = raw_data[24:36]
+    O = raw_data[36:48]
+    q = raw_data[48:64]
 
-        # 校验位检查
-        checksum = chunk[0:4]
-        expected_checksum = ['01', '00', '00', '01']
-        if checksum != expected_checksum:
-            error_message.append("校验位不匹配")
-            continue
+    # 处理为int,并入结果列表
+    if A[0] != b'\x10':
+        error_message.append("加速度值错误")
+        results += [None] * 3
+    else:
+        Ax = int.from_bytes(A[2:6], byteorder='little', signed=True)
+        Ay = int.from_bytes(A[6:10], byteorder='little', signed=True)
+        Az = int.from_bytes(A[10:14], byteorder='little', signed=True)
+        results += np.array([Ax, Ay, Az]) * 1e-6
 
-        # 提取四通道数据（8位）
-        channel_data = chunk[4:12]
+    if W[0] != b'\x20':
+        error_message.append("角速度值错误")
+        results += [None] * 3
+    else:
+        Wx = int.from_bytes(W[2:6], byteorder='little', signed=True)
+        Wy = int.from_bytes(W[6:10], byteorder='little', signed=True)
+        Wz = int.from_bytes(W[10:14], byteorder='little', signed=True)
+        results += np.array([Wx, Wy, Wz]) * 1e-6
 
-        # 检查间隔位1
-        separator1 = chunk[12:16]
-        expected_separator1 = ["ab", "ba", "fc", "cf"]
-        if separator1 != expected_separator1:
-            error_message.append("间隔位1不匹配")
-            continue
+    if B[0] != b'\x30':
+        error_message.append("磁场归一化值错误")
+        results += [None] * 3
+    else:
+        Bx = int.from_bytes(B[2:6], byteorder='little', signed=True)
+        By = int.from_bytes(B[6:10], byteorder='little', signed=True)
+        Bz = int.from_bytes(B[10:14], byteorder='little', signed=True)
+        results += np.array([Bx, By, Bz]) * 1e-6
 
-        # 提取加速度传感器数据（6位）
-        accel_data = chunk[16:22]
+    if O[0] != b'\x40':
+        error_message.append("欧拉角值错误")
+        results += [None] * 3
+    else:
+        Ox = int.from_bytes(O[2:6], byteorder='little', signed=True)
+        Oy = int.from_bytes(O[6:10], byteorder='little', signed=True)
+        Oz = int.from_bytes(O[10:14], byteorder='little', signed=True)
+        results += np.array([Ox, Oy, Oz]) * 1e-6
 
-        # 检查间隔位2
-        separator2 = chunk[22:26]
-        expected_separator2 = ["ba", "ab", "cf", "fc"]
-        if separator2 != expected_separator2:
-            error_message.append("间隔位2不匹配")
-            continue
+    if q[0] == b'\x41':
+        error_message.append("四元数值错误")
+        results += [None] * 4
+    else:
+        q1 = int.from_bytes(q[2:6], byteorder='little', signed=True)
+        q2 = int.from_bytes(q[6:10], byteorder='little', signed=True)
+        q3 = int.from_bytes(q[10:14], byteorder='little', signed=True)
+        q4 = int.from_bytes(q[14:18], byteorder='little', signed=True)
+        results += np.array([q1, q2, q3, q4]) * 1e-6
 
-        # 提取陀螺仪数据（6位）
-        gyro_data = chunk[26:32]
+    datas.append(results)
 
-        # 检查终止位
-        terminator = chunk[32:36]
-        expected_terminator = ["00", "01", "01", "00"]
-        if terminator != expected_terminator:
-            error_message.append("终止位不匹配")
-            continue
+    return datas, error_message
 
-        # 处理四通道数据
-        u_values = []
-        for i in range(0, 8, 2):
-            high = channel_data[i]
-            low = channel_data[i + 1]
-            combined = high + low
-            decimal_value = int(combined, 16)
-            # 电压计算：0-4095 对应 0-3.3V
-            voltage = (decimal_value / 4095) * 3.3
-            u_values.append(voltage)
 
-        # 处理加速度传感器数据
-        a_values = []
-        for i in range(0, 6, 2):
-            high = accel_data[i]
-            low = accel_data[i + 1]
-            combined = high + low
-            # 补码转换
-            decimal_value = int(combined, 16)
-            if decimal_value > 32767:
-                decimal_value -= 65536
-            # 加速度计：-32768 to 32767 对应 ±16g
-            g_force = (decimal_value / 32767) * 16
-            a_values.append(g_force)
+def to_csv(array, file_dir):
+    """将一组IMU数据保存为csv文件"""
+    # 验证数组形状
+    if len(array.shape) != 2 or array.shape[1] != 16:
+        raise ValueError("数组必须是二维的，并且第二维大小为16")
 
-        # 处理陀螺仪数据
-        g_values = []
-        for i in range(0, 6, 2):
-            high = gyro_data[i]
-            low = gyro_data[i + 1]
-            combined = high + low
-            # 补码转换
-            decimal_value = int(combined, 16)
-            if decimal_value > 32767:
-                decimal_value -= 65536
-            # 陀螺仪：-32768 to 32767 对应 ±2000°/s
-            degree_per_sec = (decimal_value / 32767) * 2000
-            g_values.append(degree_per_sec)
+    # 创建行索引和列索引
+    T = array.shape[0]
+    row_indices = [f'T{i}' for i in range(T)]
+    col_indices = ['Ax', 'Ay', 'Az', 'Wx', 'Wy', 'Wz', 'Bx', 'By', 'Bz', 'O1', 'O2', 'O3', 'q1', 'q2', 'q3',
+                   'q4']  # 加速度,角速度,欧拉角,四元数
 
-        # 添加结果
-        results.append({
-            "U1": u_values[0],
-            "U2": u_values[1],
-            "U3": u_values[2],
-            "U4": u_values[3],
-            "Ax": a_values[0],
-            "Ay": a_values[1],
-            "Az": a_values[2],
-            "Gx": g_values[0],
-            "Gy": g_values[1],
-            "Gz": g_values[2]
-        })
+    # 创建DataFrame
+    df = pd.DataFrame(array, index=row_indices, columns=col_indices)
 
-    if not results:
-        error_message.append("未找到有效数据")
+    # 保存为CSV文件
+    file_path = os.path.join(file_dir, f'{len(os.listdir(file_dir))}.csv')
+    df.to_csv(file_path)
+    print(f"CSV文件已保存至: {file_path}")
 
-    return data_remain, results, error_message
+    return df
